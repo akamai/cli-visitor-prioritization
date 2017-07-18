@@ -1,0 +1,12 @@
+{
+  "requirements": {
+    "python": "3.6.1"
+  },
+  "commands": [
+    {
+      "name": "vpcloudlet",
+      "version": "0.1.0",
+      "description": "Akamai API kit to access and control Visitor Prioritization cloudlet"
+    }
+  ]
+}
