@@ -44,11 +44,11 @@ rootLogger.setLevel(logging.INFO)
 
 try:
     config = configparser.ConfigParser()
-    config.read(os.path.join('config','credentials.txt'))
-    client_token = config['CREDENTIALS']['client_token']
-    client_secret = config['CREDENTIALS']['client_secret']
-    access_token = config['CREDENTIALS']['access_token']
-    access_hostname = config['CREDENTIALS']['host']
+    config.read(os.path.join(os.path.expanduser("~"),'.edgerc'))
+    client_token = config['papi']['client_token']
+    client_secret = config['papi']['client_secret']
+    access_token = config['papi']['access_token']
+    access_hostname = config['papi']['host']
     session = requests.Session()
     session.auth = EdgeGridAuth(
     			client_token = client_token,
@@ -56,7 +56,7 @@ try:
     			access_token = access_token
                 )
 except (NameError, AttributeError, KeyError):
-    rootLogger.info("\nLooks like 'config/credentials.txt' are missing\n")
+    rootLogger.info('\nLooks like ' + os.path.join(os.path.expanduser("~"),'.edgerc') + ' is missing or has invalid entries\n')
     exit(-1)
 
 #Main arguments
