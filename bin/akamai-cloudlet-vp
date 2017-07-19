@@ -12,6 +12,12 @@ Copyright 2017 Akamai Technologies, Inc. All Rights Reserved.
  limitations under the License.
 """
 
+"""
+This code leverages akamai OPEN API. to control Visitor Prioritization cloudlets. 
+In case you need quick explanation contact the initiators.
+Initiators: vbhat@akamai.com and aetsai@akamai.com
+"""
+
 import json
 from akamai.edgegrid import EdgeGridAuth
 from cloudletApiWrapper import cloudlet
@@ -51,9 +57,9 @@ try:
     access_hostname = config['papi']['host']
     session = requests.Session()
     session.auth = EdgeGridAuth(
-    			client_token = client_token,
-    			client_secret = client_secret,
-    			access_token = access_token
+                client_token = client_token,
+                client_secret = client_secret,
+                access_token = access_token
                 )
 except (NameError, AttributeError, KeyError):
     rootLogger.info('\nLooks like ' + os.path.join(os.path.expanduser("~"),'.edgerc') + ' is missing or has invalid entries\n')
