@@ -56,10 +56,10 @@ Get specific details for a policy name. Available information include configurat
 The flags of interest for create are:
 
 ```
-    -policyName <policyName>	Specified Visitor Prioritization Cloudlet policy name
-    -version <version>	Specific version number for that policy name (optional)
-	-fromVersion <fromVersion>	If -version is not specified, list policy version details starting from -fromVersion value
-    -verbose	If -version is specified, add -verbose to get full rule details including url paths and match criteria
+-policyName <policyName>    Specified Visitor Prioritization Cloudlet policy name
+-version <version>	        Specific version number for that policy name (optional)
+-fromVersion <fromVersion>	If -version is not specified, list policy version details starting from -fromVersion value (optional)
+-verbose	                If -version is specified, add -verbose to get full rule details including url paths and match criteria (optional)
 
 ```
 
@@ -75,10 +75,10 @@ Make an actual change to percentage value for a specific rule name in the policy
 The flags of interest for create are:
 
 ```
-    -throttle <value>	Acceptable values are -1 (= All to Waiting Room), 0 <= 100, or 'disabled' (to disable rule)
-    -policyName <policyName>	Specified Visitor Prioritization Cloudlet policy name
-	-ruleName <ruleName>	Name of rule in policy that should be changed. Use single quotes ('') in case rule name has spaces. If multiple rules exist for the same name, all of them will be updated.
-    -network	Either staging, prod, or production ; will make change based on latest version on that network
+-throttle <value>          Acceptable values are -1 (= All to Waiting Room), 0 <= 100, or 'disabled' (to disable rule)
+-policyName <policyName>   Specified Visitor Prioritization Cloudlet policy name
+-ruleName <ruleName>       Name of rule in policy that should be changed. Use single quotes ('') in case rule name has spaces. If multiple rules exist for the same name, all of them will be updated.
+-network <network>	       Either staging, prod, or production ; will make change based on latest version on that network
 
 ```
 
@@ -93,8 +93,41 @@ Activate a specified version for a policy to the appropriate network (staging or
 The flags of interest for create are:
 
 ```
-    -policyName <policyName>	Specified Visitor Prioritization Cloudlet policy name
-    -version <version>	Specific version number for that policy name
-    -network	Either staging, prod, or production ; will make change based on latest version on that network
+-policyName <policyName>  Specified Visitor Prioritization Cloudlet policy name
+-version <version>	      Specific version number for that policy name
+-network <network>	      Either staging, prod, or production ; will make change based on latest version on that network
+
+```
+
+### GenerateRulesJson
+Download the raw policy rules for a specified version in json format for local editing if desired.
+
+```bash
+%  akamai-cloudlet-vp -generateRulesJson -policyName samplePolicyName -version 87
+%  akamai-cloudlet-vp -generateRulesJson -policyName samplePolicyName -version 71 -outputfile savefilename.json
+```
+
+The flags of interest for create are:
+
+```
+-policyName <policyName>  Specified Visitor Prioritization Cloudlet policy name
+-version <version>	      Specific version number for that policy name
+-outputfile <filename>	  Filename to be saved as in /rules folder (optional) 
+
+```
+
+### createVersion
+Download the raw policy rules for a specified version in json format for local editing if desired.
+
+```bash
+%  akamai-cloudlet-vp -createVersion -policyName samplePolicyName
+%  akamai-cloudlet-vp -createVersion -policyName samplePolicyName -file filename.json 
+```
+
+The flags of interest for create are:
+
+```
+-policyName <policyName>  Specified Visitor Prioritization Cloudlet policy name
+-file <file>	          Filename of raw .json file to be used as policy details. This file should be in the /rules folder (optional)
 
 ```
