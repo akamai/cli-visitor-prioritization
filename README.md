@@ -26,8 +26,8 @@ Main program that wraps this functionality in a command line utility:
 * [Get Policy Detail](#getdetail)
 * [Throttle](#throttle)
 * [Activate](#activate)
-* [Download Policy Rules Json](#generateRulesJson)
-* [Create Version](#createVersion)
+* [Download Policy Rules Json](#generaterulesjson)
+* [Create Version](#createversion)
 
 ### Setup
 Does a one time download of Visitor Prioritization Cloudlet policyIds and groupIds and stores them in /setup folder for faster local retrieval. This command can be run anytime and will refresh the /setup folder based on the current list of policies. 
@@ -57,9 +57,9 @@ The flags of interest for create are:
 
 ```
 -policyName <policyName>    Specified Visitor Prioritization Cloudlet policy name
--version <version>	        Specific version number for that policy name (optional)
--fromVersion <fromVersion>	If -version is not specified, list policy version details starting from -fromVersion value (optional)
--verbose	                If -version is specified, add -verbose to get full rule details including url paths and match criteria (optional)
+-version <version>          Specific version number for that policy name (optional)
+-fromVersion <fromVersion>  If -version is not specified, list policy version details starting from -fromVersion value (optional)
+-verbose                    If -version is specified, add -verbose to get full rule details including url paths and match criteria (optional)
 
 ```
 
@@ -78,7 +78,7 @@ The flags of interest for create are:
 -throttle <value>          Acceptable values are -1 (= All to Waiting Room), 0 <= 100, or 'disabled' (to disable rule)
 -policyName <policyName>   Specified Visitor Prioritization Cloudlet policy name
 -ruleName <ruleName>       Name of rule in policy that should be changed. Use single quotes ('') in case rule name has spaces. If multiple rules exist for the same name, all of them will be updated.
--network <network>	       Either staging, prod, or production ; will make change based on latest version on that network
+-network <network>         Either staging, prod, or production ; will make change based on latest version on that network
 
 ```
 
@@ -94,8 +94,8 @@ The flags of interest for create are:
 
 ```
 -policyName <policyName>  Specified Visitor Prioritization Cloudlet policy name
--version <version>	      Specific version number for that policy name
--network <network>	      Either staging, prod, or production ; will make change based on latest version on that network
+-version <version>        Specific version number for that policy name
+-network <network>        Either staging, prod, or production ; will make change based on latest version on that network
 
 ```
 
@@ -111,8 +111,8 @@ The flags of interest for create are:
 
 ```
 -policyName <policyName>  Specified Visitor Prioritization Cloudlet policy name
--version <version>	      Specific version number for that policy name
--outputfile <filename>	  Filename to be saved as in /rules folder (optional) 
+-version <version>        Specific version number for that policy name
+-outputfile <filename>    Filename to be saved as in /rules folder (optional) 
 
 ```
 
