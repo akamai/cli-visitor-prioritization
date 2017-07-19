@@ -30,9 +30,33 @@ Main program that wraps this functionality in a command line utility:
 * [Create Version](#createVersion)
 
 ### Setup
-Does a one time download of visitor prioritization cloudlet policyIds and groupIds and stores them in /setup folder for faster local retrieval. This command can be run anytime and will refresh the /setup folder based on the current list of policies. 
+Does a one time download of Visitor Prioritization Cloudlet policyIds and groupIds and stores them in /setup folder for faster local retrieval. This command can be run anytime and will refresh the /setup folder based on the current list of policies. 
 
 ```bash
 %  akamai-cloudlet-vp -setup
+```
+
+### listPolicies
+List current Visitor Prioritization Cloudlet policy names  
+
+```bash
+%  akamai-cloudlet-vp -listPolicies
+```
+
+### getDetail
+Get specific details for a policy name. Available information include configurations that reference that policy, current version numbers on Akamai staging and production, version history, and current rule settings.
+
+```bash
+%  akamai-cloudlet-vp -getDetail -policyName samplePolicyName
+```
+
+The flags of interest for create are:
+
+```
+    -policyName <policyName> 	Desired Visitor Prioritization Cloudlet policy name
+	-fromVersion <fromVersion> 	If -version is NOT specified, list policy version details starting from -fromVersion value
+    -version <version>       	Specific version number for that policy name (optional)
+    -verbose                 	If -version is specified, add -verbose to get full rule details including url paths and match criteria
+
 ```
 
