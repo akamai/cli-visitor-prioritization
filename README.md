@@ -22,8 +22,8 @@ The initial version of the cloudlet-visitor-prioritization provides the followin
 ## cli-cloudlet-visitor-prioritization
 Main program that wraps this functionality in a command line utility:
 * [Setup](#setup)
-* [List Policies](#listPolicies)
-* [Get Policy Detail](#getDetail)
+* [List Policies](#listpolicies)
+* [Get Policy Detail](#getdetail)
 * [Throttle](#throttle)
 * [Activate](#activate)
 * [Download Policy Rules Json](#generateRulesJson)
@@ -48,15 +48,37 @@ Get specific details for a policy name. Available information include configurat
 
 ```bash
 %  akamai-cloudlet-vp -getDetail -policyName samplePolicyName
+%  akamai-cloudlet-vp -getDetail -policyName samplePolicyName -fromVersion 37
+%  akamai-cloudlet-vp -getDetail -policyName samplePolicyName -version 66
+%  akamai-cloudlet-vp -getDetail -policyName samplePolicyName -version 66 -verbose
 ```
 
 The flags of interest for create are:
 
 ```
-    -policyName <policyName> 	Desired Visitor Prioritization Cloudlet policy name
-	-fromVersion <fromVersion> 	If -version is NOT specified, list policy version details starting from -fromVersion value
-    -version <version>       	Specific version number for that policy name (optional)
-    -verbose                 	If -version is specified, add -verbose to get full rule details including url paths and match criteria
+    -policyName <policyName>	Specified Visitor Prioritization Cloudlet policy name
+    -version <version>	Specific version number for that policy name (optional)
+	-fromVersion <fromVersion>	If -version is not specified, list policy version details starting from -fromVersion value
+    -verbose	If -version is specified, add -verbose to get full rule details including url paths and match criteria
+
+```
+
+### Throttle
+Make an actual change to percentage value for a specific rule name in the policy.
+
+```bash
+%  akamai-cloudlet-vp -throttle 50 -policyName samplePolicyName -rule 'ruleName' -network staging
+%  akamai-cloudlet-vp -throttle -1 -policyName samplePolicyName -rule 'ruleName' -network staging
+%  akamai-cloudlet-vp -throttle disabled -policyName samplePolicyName -rule 'ruleName' -network prod
+```
+
+The flags of interest for create are:
+
+```
+    -throttle <value>	Acceptable values are -1 (= All to Waiting Room), 0 <= 100, or 'disabled' (to disable rule)
+    -policyName <policyName>	Specified Visitor Prioritization Cloudlet policy name
+	-ruleName <ruleName>	Name of rule in policy that should be changed. Use single quotes ('') in case rule name has spaces. If multiple rules exist for the same name, all of them will be updated.
+    -network	Either staging or prod ; will make change based on latest version on that network
 
 ```
 
