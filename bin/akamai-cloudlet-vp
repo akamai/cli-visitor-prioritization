@@ -85,6 +85,8 @@ parser.add_argument("-rule",help="Rule name that needs to be updated for -thrott
 parser.add_argument("-outputfile",help="Output filename to store the rules used in -generateRulesJson method (output file can then be used as input for -createVersion using -file)")
 parser.add_argument("-verbose",help="Display detailed rule information for a specific version (only for -getDetail method with -version)", action="store_true")
 parser.add_argument("-fromVersion",help="Display policy versions starting from the version number specified (only for -getDetail method w/o version)")
+parser.add_argument("-ignorePrompt",help="Do not prompt for user actions/confirmation in -throttle and -createVersion option", action="store_true")
+
 
 parser.add_argument("-debug",help="DEBUG mode to generate additional logs for troubleshooting",action="store_true")
 
@@ -342,8 +344,15 @@ if args.createVersion:
         exit(-1)
 
     rootLogger.info('\nDoes your rules json file have the proper description field updated?  This will be used as comments for this version\n')
-    rootLogger.info('\nPress Y to continue and N to exit.')
-    option = input()
+
+    if not args.ignorePrompt:
+        rootLogger.info('\nPress Y to continue and N to exit.')
+        option = input()
+    else:
+        #If we are ignoring the prompt, set option to Y
+        option = 'Y'
+        rootLogger.info('\nHonoring the ignorePrompt flag and proceeding automatically.\n')
+
     if option == 'Y' or option == 'y':
         policy = args.policy
         cloudletObject = cloudlet(access_hostname)
@@ -467,37 +476,51 @@ if args.throttle:
         rootLogger.info("Please enter rule name using -rule option")
         exit(-1)
 
+    #Over-rider production as prod
+    if args.network == 'production':
+        args.network = 'prod'
+        network = 'prod'
+
     if args.network == 'staging':
-        if not args.throttle.lower()=='disabled':
-            rootLogger.info('You are about to throttle ' + args.rule + ' at value = ' + str(args.throttle) + ' for ' + args.policy + ' on the Akamai ' + args.network + ' network. Do you wish to continue? (Press Y or N)')
+        if not args.ignorePrompt:
+            if not args.throttle.lower()=='disabled':
+                rootLogger.info('You are about to throttle ' + args.rule + ' at value = ' + str(args.throttle) + ' for ' + args.policy + ' on the Akamai ' + args.network + ' network. Do you wish to continue? (Press Y or N)')
+            else:
+                rootLogger.info('You are about to disable ' + args.rule + ' for ' + args.policy + ' on the Akamai ' + args.network + ' network. Do you wish to continue? (Press Y or N)')
+            decision = input()
         else:
-            rootLogger.info('You are about to disable ' + args.rule + ' for ' + args.policy + ' on the Akamai ' + args.network + ' network. Do you wish to continue? (Press Y or N)')
-        decision = input()
+            #If we are ignoring prompt, set the decision to Y
+            decision = 'Y'
+            rootLogger.info('\nHonoring the ignorePrompt flag and proceeding automatically.\n')
+            
         if decision == 'N' or decision == 'n':
             rootLogger.info('Exiting...')
             exit(-1)
+
     elif args.network == 'prod':
-        if not args.throttle.lower()=='disabled':
-            rootLogger.info('You are about to throttle ' + args.rule + ' at value = ' + str(args.throttle) + ' for ' + args.policy + ' on the Akamai ' + args.network + ' network. Do you wish to continue? (Press Y or N)')
-        else:
-            rootLogger.info('You are about to disable ' + args.rule + ' for ' + args.policy + ' on the Akamai ' + args.network + ' network. Do you wish to continue? (Press Y or N)')
-        decision = input()
-        if decision == 'N' or decision == 'n':
-            rootLogger.info('Exiting...')
-            exit(-1)
-        else:
+        if not args.ignorePrompt:
+            if not args.throttle.lower()=='disabled':
+                rootLogger.info('You are about to throttle ' + args.rule + ' at value = ' + str(args.throttle) + ' for ' + args.policy + ' on the Akamai ' + args.network + ' network. Do you wish to continue? (Press Y or N)')
+            else:
+                rootLogger.info('You are about to disable ' + args.rule + ' for ' + args.policy + ' on the Akamai ' + args.network + ' network. Do you wish to continue? (Press Y or N)')
+            decision = input()
+            if decision == 'N' or decision == 'n':
+                rootLogger.info('Exiting...')
+                exit(-1)
             rootLogger.info('This is the Akamai Production Network. Are you absolutely sure? (Press Y or N)')
             decision = input()
             if decision == 'N' or decision == 'n':
                 rootLogger.info('Exiting...')
                 exit(-1)
+        else:
+            #If we are ignoring prompt, set the decision to Y
+            decision = 'Y'
+            rootLogger.info('\nHonoring the ignorePrompt flag and proceeding automatically.\n')
+
     if args.network != 'staging' and args.network != 'prod' and args.network != 'production':
         rootLogger.info('Allowed values for network are staging and prod/production\n')
         exit(-1)
-    #Over-rider production as prod
-    if args.network == 'production':
-        args.network = 'prod'
-        network = 'prod'
+
     #Validation steps end
     #Proceed further only if user intends and has pressed Y or y
     if decision == 'y' or decision == 'Y':
