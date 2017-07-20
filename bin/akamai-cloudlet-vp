@@ -13,7 +13,7 @@ Copyright 2017 Akamai Technologies, Inc. All Rights Reserved.
 """
 
 """
-This code leverages akamai OPEN API. to control Visitor Prioritization cloudlets. 
+This code leverages akamai OPEN API. to control Visitor Prioritization cloudlets.
 In case you need quick explanation contact the initiators.
 Initiators: vbhat@akamai.com and aetsai@akamai.com
 """
@@ -240,19 +240,20 @@ if args.getDetail:
                     if everyactivationDetail['policyInfo']['status'] == 'active':
                         rootLogger.info('Version ' + str(everyactivationDetail['policyInfo']['version']) + ' is live in ' +  str(everyactivationDetail['network']) + ' for configuration: ' + str(everyactivationDetail['propertyInfo']['name']) + ' v' + str(everyactivationDetail['propertyInfo']['version']))
                         #rootLogger.info(everyactivationDetail['network'] + ' Version: ' + str(everyactivationDetail['policyInfo']['version']) + '\n')
-                fromVersion = 1
-                if not args.verbose:
+
+                if not args.verbose and not args.fromVersion:
                     policyVersions = cloudletObject.listPolicyVersions(session, policy_policyId, pageSize='10')
                     rootLogger.info('\nFetching last 10 policy version details... You can pass -verbose to get all the versions.')
                 else:
                     policyVersions = cloudletObject.listPolicyVersions(session, policy_policyId)
-                    if args.fromVersion:
-                        fromVersion = args.fromVersion
-                        rootLogger.info('\nShowing policy version details from version ' + args.fromVersion)
+                    rootLogger.info('\nShowing policy version details from version ' + str(args.fromVersion))
                 rootLogger.info('\nVersion Details (Version : Description)')
                 rootLogger.info('------------------------------------------')
                 for everyVersion in policyVersions.json():
-                    if int(everyVersion['version']) >= int(fromVersion):
+                    if args.fromVersion:
+                      if int(everyVersion['version']) >= int(args.fromVersion):
+                        rootLogger.info(str(everyVersion['version']) + ' : ' + str(everyVersion['description']))
+                    else:
                         rootLogger.info(str(everyVersion['version']) + ' : ' + str(everyVersion['description']))
 
                 rootLogger.info('\nNOTE: You can pass -version <version_number> as an additional argument to get version specific details\n')
@@ -632,4 +633,4 @@ if args.listPolicies:
     rootLogger.info('\n--------------------------\n')
 
 #Final or common Successful exit
-exit(0)    
+exit(0)
