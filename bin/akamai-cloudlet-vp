@@ -185,52 +185,50 @@ if args.getDetail:
             rootLogger.info('Fetching policy details...')
             if args.version:
                 version = args.version
-                policyVersionsDetails = cloudletObject.listPolicyVersions(session, policy_policyId)
-                versionFound = 0
-                rootLogger.debug(json.dumps(policyVersionsDetails.json()))
-                for everyVersionDetail in policyVersionsDetails.json():
-                    if str(everyVersionDetail['version']) == str(version):
-                        versionFound = 1
-                        if not everyVersionDetail['deleted']:
-                            rootLogger.info('\nDetails of version: ' + str(everyVersionDetail['version']))
-                            rootLogger.info('Policy created by: ' + everyVersionDetail['createdBy'] + '\n')
-                            #Need to check for match rules, sometimes we see null values
-                            if everyVersionDetail['matchRules'] is not None:
-                                if not args.verbose:
+                policyDetail = cloudletObject.getCloudletPolicy(session, policy_policyId, version=args.version)
+                rootLogger.debug(json.dumps(policyDetail.json()))
+                everyVersionDetail = policyDetail.json()
+                if policyDetail.status_code == 200:
+                    if not everyVersionDetail['deleted']:
+                        rootLogger.info('\nDetails of version: ' + str(everyVersionDetail['version']))
+                        rootLogger.info('Policy created by: ' + everyVersionDetail['createdBy'] + '\n')
+                        #Need to check for match rules, sometimes we see null values
+                        if everyVersionDetail['matchRules'] is not None:
+                            if not args.verbose:
+                                for everyMatchRule in everyVersionDetail['matchRules']:
+                                    multipleMatches = 0
+                                    #Loop each match conditon within each rule
+                                    #Check wthether rules is disabled, if yes display accordingly
+                                    if 'disabled' in everyMatchRule and everyMatchRule['disabled'] is True:
+                                        status='DISABLED'
+                                    else:
+                                        status='ACTIVE'
+                                    print('   ' + everyMatchRule['name'] + ' -> ' + str(everyMatchRule['passThroughPercent']) + ' -> ' + status)
+                                print('\nNOTE: You can pass -verbose as an additional argument to get detailed rule information')
+                            if args.verbose:
+                                    rootLogger.info('     Match Criteria and Rule Details are: ')
+                                    rootLogger.info('\n       ----------------------------------------------       \n')
                                     for everyMatchRule in everyVersionDetail['matchRules']:
                                         multipleMatches = 0
-                                        #Loop each match conditon within each rule
-                                        #Check wthether rules is disabled, if yes display accordingly
+                                        rootLogger.info('       Rule Name: ' + everyMatchRule['name'])
+                                        rootLogger.info('       Traffic Percentage: ' + str(everyMatchRule['passThroughPercent']))
+                                        rootLogger.info('')
+                                        # Loop each match conditon within each rule
+                                        for everyMatchCondition in everyMatchRule['matches']:
+                                            if multipleMatches == 1:
+                                                rootLogger.info('       AND')
+                                            rootLogger.info('       Match Type: ' + everyMatchCondition['matchType'])
+                                            rootLogger.info('       Match Value: ' + everyMatchCondition['matchValue'])
+                                            multipleMatches = 1
+                                        # Check wthether rules is disabled, if yes display accordingly
                                         if 'disabled' in everyMatchRule and everyMatchRule['disabled'] is True:
-                                            status='DISABLED'
+                                            rootLogger.info('\n       Rule is DISABLED')
                                         else:
-                                            status='ACTIVE'
-                                        print('   ' + everyMatchRule['name'] + ' -> ' + str(everyMatchRule['passThroughPercent']) + ' -> ' + status)
-                                    print('\nNOTE: You can pass -verbose as an additional argument to get detailed rule information')
-                                if args.verbose:
-                                        rootLogger.info('     Match Criteria and Rule Details are: ')
+                                            rootLogger.info('\n       Rule is ACTIVE')
                                         rootLogger.info('\n       ----------------------------------------------       \n')
-                                        for everyMatchRule in everyVersionDetail['matchRules']:
-                                            multipleMatches = 0
-                                            rootLogger.info('       Rule Name: ' + everyMatchRule['name'])
-                                            rootLogger.info('       Traffic Percentage: ' + str(everyMatchRule['passThroughPercent']))
-                                            rootLogger.info('')
-                                            # Loop each match conditon within each rule
-                                            for everyMatchCondition in everyMatchRule['matches']:
-                                                if multipleMatches == 1:
-                                                    rootLogger.info('       AND')
-                                                rootLogger.info('       Match Type: ' + everyMatchCondition['matchType'])
-                                                rootLogger.info('       Match Value: ' + everyMatchCondition['matchValue'])
-                                                multipleMatches = 1
-                                            # Check wthether rules is disabled, if yes display accordingly
-                                            if 'disabled' in everyMatchRule and everyMatchRule['disabled'] is True:
-                                                rootLogger.info('\n       Rule is DISABLED')
-                                            else:
-                                                rootLogger.info('\n       Rule is ACTIVE')
-                                            rootLogger.info('\n       ----------------------------------------------       \n')
-                            else:
-                                rootLogger.info('\nThere are no match criterias for this rule\n')
-                if versionFound == 0:
+                        else:
+                            rootLogger.info('\nThere are no match criterias for this rule\n')
+                else:
                     rootLogger.info('Requested policy version does not exist - please check version number')
             else:
                 policyDetails = cloudletObject.getCloudletPolicy(session, policy_policyId)
@@ -492,7 +490,7 @@ if args.throttle:
             #If we are ignoring prompt, set the decision to Y
             decision = 'Y'
             rootLogger.info('\nignorePrompt flag specified. Proceeding automatically...\n')
-            
+
         if decision == 'N' or decision == 'n':
             rootLogger.info('Exiting...')
             exit(-1)
