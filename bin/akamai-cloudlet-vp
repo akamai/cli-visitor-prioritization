@@ -243,9 +243,9 @@ if args.getDetail:
                         rootLogger.info('Version ' + str(everyactivationDetail['policyInfo']['version']) + ' is live in ' +  str(everyactivationDetail['network']) + ' for configuration: ' + str(everyactivationDetail['propertyInfo']['name']) + ' v' + str(everyactivationDetail['propertyInfo']['version']))
                         #rootLogger.info(everyactivationDetail['network'] + ' Version: ' + str(everyactivationDetail['policyInfo']['version']) + '\n')
 
-                if not args.verbose and not args.fromVersion:
+                if not args.fromVersion:
                     policyVersions = cloudletObject.listPolicyVersions(session, policy_policyId, pageSize='10')
-                    rootLogger.info('\nFetching last 10 policy version details... You can pass -verbose to get all the versions.')
+                    rootLogger.info('\nFetching last 10 policy version details... You can pass -fromVersion to list more versions.')
                 else:
                     policyVersions = cloudletObject.listPolicyVersions(session, policy_policyId)
                     rootLogger.info('\nShowing policy version details from version ' + str(args.fromVersion))
@@ -351,7 +351,7 @@ if args.createVersion:
     else:
         #If we are ignoring the prompt, set option to Y
         option = 'Y'
-        rootLogger.info('\nHonoring the ignorePrompt flag and proceeding automatically.\n')
+        rootLogger.info('\nignorePrompt flag specified. Proceeding automatically...\n')
 
     if option == 'Y' or option == 'y':
         policy = args.policy
@@ -491,7 +491,7 @@ if args.throttle:
         else:
             #If we are ignoring prompt, set the decision to Y
             decision = 'Y'
-            rootLogger.info('\nHonoring the ignorePrompt flag and proceeding automatically.\n')
+            rootLogger.info('\nignorePrompt flag specified. Proceeding automatically...\n')
             
         if decision == 'N' or decision == 'n':
             rootLogger.info('Exiting...')
@@ -515,7 +515,7 @@ if args.throttle:
         else:
             #If we are ignoring prompt, set the decision to Y
             decision = 'Y'
-            rootLogger.info('\nHonoring the ignorePrompt flag and proceeding automatically.\n')
+            rootLogger.info('\nignorePrompt flag specified. Proceeding automatically...\n')
 
     if args.network != 'staging' and args.network != 'prod' and args.network != 'production':
         rootLogger.info('Allowed values for network are staging and prod/production\n')
