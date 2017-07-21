@@ -70,6 +70,7 @@ Make an actual change to percentage value for a specific rule name in the policy
 %  akamai-cloudlet-vp -throttle 50 -policyName samplePolicyName -rule 'ruleName' -network staging
 %  akamai-cloudlet-vp -throttle -1 -policyName samplePolicyName -rule 'ruleName' -network staging
 %  akamai-cloudlet-vp -throttle disabled -policyName samplePolicyName -rule 'ruleName' -network prod
+%  akamai-cloudlet-vp -throttle disabled -policyName samplePolicyName -rule 'ruleName' -network staging -ignorePrompt
 ```
 
 The flags of interest for create are:
@@ -79,7 +80,7 @@ The flags of interest for create are:
 -policyName <policyName>   Specified Visitor Prioritization Cloudlet policy name
 -ruleName <ruleName>       Name of rule in policy that should be changed. Use single quotes ('') in case rule name has spaces. If multiple rules exist for the same name, all of them will be updated.
 -network <network>         Either staging, prod, or production ; will make change based on latest version on that network
-
+-ignorePrompt              Use this flag if you want to proceed without confirmation
 ```
 
 ### Activate
@@ -121,7 +122,8 @@ Download the raw policy rules for a specified version in json format for local e
 
 ```bash
 %  akamai-cloudlet-vp -createVersion -policyName samplePolicyName
-%  akamai-cloudlet-vp -createVersion -policyName samplePolicyName -file filename.json 
+%  akamai-cloudlet-vp -createVersion -policyName samplePolicyName -file filename.json
+%  akamai-cloudlet-vp -createVersion -policyName samplePolicyName -file filename.json -ignorePrompt 
 ```
 
 The flags of interest for create are:
@@ -129,5 +131,5 @@ The flags of interest for create are:
 ```
 -policyName <policyName>  Specified Visitor Prioritization Cloudlet policy name
 -file <file>	          Filename of raw .json file to be used as policy details. This file should be in the /rules folder (optional)
-
+-ignorePrompt             Use this flag if you want to proceed without confirmation
 ```
