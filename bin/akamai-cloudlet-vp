@@ -26,6 +26,7 @@ import configparser
 import requests
 import os
 import logging
+import shutil
 
 #Setup logging
 if not os.path.exists('logs'):
@@ -115,6 +116,9 @@ if args.setup:
     rootLogger.info('Processing groups...')
     if groupResponse.status_code == 200:
         groupPath = 'groups'
+        #Delete the groups folder before we start
+        if os.path.exists('groups'):
+            shutil.rmtree('groups')
         if not os.path.exists(groupPath):
             os.makedirs(groupPath)
         with open(os.path.join(groupPath,'groups.json'),'w') as groupFile:
@@ -131,6 +135,9 @@ if args.setup:
 
         policyPath = 'policies'
         policiesList = []
+        #Delete the policies folder before we start
+        if os.path.exists('policies'):
+            shutil.rmtree('policies')
         if not os.path.exists(policyPath):
             os.makedirs(policyPath)
         rootLogger.info('Total groups found: ' + str(totalGroups))
@@ -284,53 +291,38 @@ if args.generateRulesJson:
             policy_groupId = policyJsonContent['groupId']
             policy_policyId = policyJsonContent['policyId']
             rootLogger.info('\nFetching policy rule details...')
-            policyVersions = cloudletObject.listPolicyVersions(session, policy_policyId)
-            if policyVersions.status_code == 200:
-                rootLogger.debug(json.dumps(policyVersions.json()))
-                rootLogger.info('Fetching policy version...')
-                #rootLogger.info(json.dumps(policyVersions.json()))
-                versionFound = 0
-                #rootLogger.info(json.dumps(policyVersions.json()))
-                for everyVersion in policyVersions.json():
-                    Responseversion = everyVersion['version']
-                    if str(Responseversion) == str(version):
-                        versionFound = 1
-                        break
-
-                if versionFound == 1:
-                    policyDetails = cloudletObject.getCloudletPolicy(session, policy_policyId, version=version)
-                    #rootLogger.info(json.dumps(policyDetails.json()))
-                    #Update the local copy to latest details
-                    if args.outputfile:
-                        outputfilename = args.outputfile
-                    else:
-                        newPolicyFolder = 'rules'
-                        if not os.path.exists(newPolicyFolder):
-                            os.makedirs(newPolicyFolder)
-                        newPolicyFile = args.policy + '_rules.json'
-                        outputfilename = os.path.join(newPolicyFolder,newPolicyFile)
-                    policyDetailsToFile = {}
-                    everyDetailofPolicy = policyDetails.json()
-                    if 'description' in everyDetailofPolicy:
-                        policyDetailsToFile['description'] = everyDetailofPolicy['description']
-                    if 'matchRules' in everyDetailofPolicy:
-                        #Check whether it is null value
-                        if everyDetailofPolicy['matchRules'] is not None:
-                            matchRulesSection = everyDetailofPolicy['matchRules']
-                            for everyMatchRule in matchRulesSection:
-                                if 'location' in everyMatchRule:
-                                    del everyMatchRule['location']
-                            policyDetailsToFile['matchRules'] = everyDetailofPolicy['matchRules']
-                    if 'description' in everyDetailofPolicy is None:
-                        policyDetailsToFile['description'] = 'This is a version created using API'
-
-                    with open(outputfilename, mode='w') as policyFileHandler:
-                        policyFileHandler.write(json.dumps(policyDetailsToFile,indent=4))
-                    rootLogger.info('\nGenerated policy rule details in json format. File output location is: ' + outputfilename)
+            policyDetails = cloudletObject.getCloudletPolicy(session, policy_policyId, version=version)
+            if policyDetails.status_code == 200:
+                #rootLogger.info(json.dumps(policyDetails.json()))
+                #Update the local copy to latest details
+                if args.outputfile:
+                    outputfilename = args.outputfile
                 else:
-                    rootLogger.info('Requested policy version does not exist - please check version number')
+                    newPolicyFolder = 'rules'
+                    if not os.path.exists(newPolicyFolder):
+                        os.makedirs(newPolicyFolder)
+                    newPolicyFile = args.policy + '_rules.json'
+                    outputfilename = os.path.join(newPolicyFolder,newPolicyFile)
+                policyDetailsToFile = {}
+                everyDetailofPolicy = policyDetails.json()
+                if 'description' in everyDetailofPolicy:
+                    policyDetailsToFile['description'] = everyDetailofPolicy['description']
+                if 'matchRules' in everyDetailofPolicy:
+                    #Check whether it is null value
+                    if everyDetailofPolicy['matchRules'] is not None:
+                        matchRulesSection = everyDetailofPolicy['matchRules']
+                        for everyMatchRule in matchRulesSection:
+                            if 'location' in everyMatchRule:
+                                del everyMatchRule['location']
+                        policyDetailsToFile['matchRules'] = everyDetailofPolicy['matchRules']
+                if 'description' in everyDetailofPolicy is None:
+                    policyDetailsToFile['description'] = 'This is a version created using API'
+
+                with open(outputfilename, mode='w') as policyFileHandler:
+                    policyFileHandler.write(json.dumps(policyDetailsToFile,indent=4))
+                rootLogger.info('\nGenerated policy rule details in json format. File output location is: ' + outputfilename)
             else:
-                rootLogger.info('Unable to fetch version details')
+                rootLogger.info('Unable to fetch version details. Check the version number')
                 exit(-1)
         else:
             rootLogger.info('\nLocal datastore does not have this policy. Please double check policy name or run -setup first')
@@ -439,14 +431,8 @@ if args.activate:
             if activationResponse.status_code == 200:
                 rootLogger.info('Success! Policy version is activated')
             else:
-                rootLogger.info('Unable to activate, check for invalid version')
-                policyVersions = cloudletObject.listPolicyVersions(session, policy_policyId)
-                #rootLogger.info('\nAvailable versions are:')
-                rootLogger.info('Version Details (Version : Description)' )
-                rootLogger.info('----------------------' )
-                for everyVersion in policyVersions.json():
-                    rootLogger.info(str(everyVersion['version']) + ' : ' + str(everyVersion['description']))
-                rootLogger.debug(json.dumps(activationResponse.json()))
+                rootLogger.info('Unable to activate, check the version number.')
+                exit(-1)
         else:
             rootLogger.info('\nLocal datastore does not have this policy. Please double check policy name or run -setup first')
             exit(-1)
@@ -619,13 +605,7 @@ if args.throttle:
                             rootLogger.info('Success! Throttle change is live...')
                         else:
                             rootLogger.info('Unable to activate, check for invalid version')
-                            policyVersions = cloudletObject.listPolicyVersions(session, policy_policyId)
-                            #rootLogger.info('\nAvailable versions are:')
-                            rootLogger.info('Version Details (Version : Description)' )
-                            rootLogger.info('----------------------' )
-                            for everyVersion in policyVersions.json():
-                                rootLogger.info(str(everyVersion['version']) + ' : ' + str(everyVersion['description']))
-                            rootLogger.debug(json.dumps(activationResponse.json()))
+                            exit(-1)
                     else:
                         rootLogger.info('Cannot create new policy version, Reason: ' + str(policyUpdateResponse.json()['detail']))
                         rootLogger.debug('Detailed Json response is: ' + str(policyUpdateResponse.json()))
