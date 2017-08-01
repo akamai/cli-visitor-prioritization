@@ -67,7 +67,7 @@ except (NameError, AttributeError, KeyError):
     exit(-1)
 
 #Main arguments
-parser = argparse.ArgumentParser(description='OpenAPI credentials are read from ./config/credentials.txt')
+parser = argparse.ArgumentParser(description='OpenAPI credentials are read from ~/.edgerc file')
 parser.add_argument("-help",help="Use -h for detailed help options",action="store_true")
 parser.add_argument("-setup","-s",help="Initial setup to download all necessary policy information",action="store_true")
 parser.add_argument("-getDetail",help="Display general policy details, active policy versions, or specific policy version details",action="store_true")
