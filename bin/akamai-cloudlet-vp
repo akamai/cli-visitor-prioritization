@@ -19,25 +19,27 @@ Initiators: vbhat@akamai.com and aetsai@akamai.com
 """
 
 import json
-from akamai.edgegrid import EdgeGridAuth
+from akamai.edgegrid import EdgeGridAuth, EdgeRc
 from cloudletApiWrapper import cloudlet
 import argparse
 import configparser
 import requests
 import os
+import sys
 import logging
 import shutil
 
-#Setup logging
+PACKAGE_VERSION = "0.1.0"
+
+# Setup logging
 if not os.path.exists('logs'):
     os.makedirs('logs')
 logFile = os.path.join('logs', 'VPConfigKit_log.log')
 
-#Set the format of logging in console and file seperately
+# Set the format of logging in console and file seperately
 logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
 consoleFormatter = logging.Formatter("%(message)s")
 rootLogger = logging.getLogger()
-
 
 logfileHandler = logging.FileHandler(logFile, mode='w')
 logfileHandler.setFormatter(logFormatter)
@@ -46,84 +48,259 @@ rootLogger.addHandler(logfileHandler)
 consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(consoleFormatter)
 rootLogger.addHandler(consoleHandler)
-#Set Log Level to DEBUG, INFO, WARNING, ERROR, CRITICAL
+# Set Log Level to DEBUG, INFO, WARNING, ERROR, CRITICAL
 rootLogger.setLevel(logging.INFO)
 
-try:
-    config = configparser.ConfigParser()
-    config.read(os.path.join(os.path.expanduser("~"),'.edgerc'))
-    client_token = config['papi']['client_token']
-    client_secret = config['papi']['client_secret']
-    access_token = config['papi']['access_token']
-    access_hostname = config['papi']['host']
-    session = requests.Session()
-    session.auth = EdgeGridAuth(
-                client_token = client_token,
-                client_secret = client_secret,
-                access_token = access_token
-                )
-except (NameError, AttributeError, KeyError):
-    rootLogger.info('\nLooks like ' + os.path.join(os.path.expanduser("~"),'.edgerc') + ' is missing or has invalid entries\n')
-    exit(-1)
 
-#Main arguments
-parser = argparse.ArgumentParser(description='OpenAPI credentials are read from ~/.edgerc file')
-parser.add_argument("-help",help="Use -h for detailed help options",action="store_true")
-parser.add_argument("-setup","-s",help="Initial setup to download all necessary policy information",action="store_true")
-parser.add_argument("-getDetail",help="Display general policy details, active policy versions, or specific policy version details",action="store_true")
-parser.add_argument("-generateRulesJson",help="Generate the policy version rules json and output to rules folder. (Optionally, use -outputfile to specify location of outputfile)",action="store_true")
-parser.add_argument("-createVersion",help="Create a new policy version using a local file from the rules folder with name <policy>.json (or use -file <file path> as input)",action="store_true")
-parser.add_argument("-activate",help="Activate a specific policy version (-version and -network are mandatory)",action="store_true")
-parser.add_argument("-throttle",help="Throttle traffic by rule name (value should be from -1 to 100 or \"disabled\")")
-parser.add_argument("-listPolicies",help="List all VP policy names", action="store_true")
+def initConfig(edgercFile, section):
+    if not edgercFile:
+        if not os.getenv("AKAMAI_EDGERC"):
+            edgercFile = os.path.join(os.path.expanduser("~"), '.edgerc')
+        else:
+            edgercFile = os.getenv("AKAMAI_EDGERC")
 
-#Additional arguments
-parser.add_argument("-policy",help="Policy name")
-parser.add_argument("-file",help="Filepath for input rules file used in -createVersion method (OPTIONAL)")
-parser.add_argument("-network",help="Network to be activated on. Allowed values are staging, prod, production (case-sensitive)")
-parser.add_argument("-version",help="Version number of the policy")
-parser.add_argument("-rule",help="Rule name that needs to be updated for -throttle method (use 'single quotes' to honor spaces in rule name))")
-parser.add_argument("-outputfile",help="Output filename to store the rules used in -generateRulesJson method (output file can then be used as input for -createVersion using -file)")
-parser.add_argument("-verbose",help="Display detailed rule information for a specific version (only for -getDetail method with -version)", action="store_true")
-parser.add_argument("-fromVersion",help="Display policy versions starting from the version number specified (only for -getDetail method w/o version)")
-parser.add_argument("-ignorePrompt",help="Do not prompt for user actions/confirmation in -throttle and -createVersion option", action="store_true")
+    if not os.access(edgercFile, os.R_OK):
+        rootLogger.error("Unable to read edgerc file \"%s\"" % edgercFile)
+        exit(1)
+
+    if not section:
+        if not os.getenv("AKAMAI_EDGERC_SECTION"):
+            section = "cloudlets"
+        else:
+            section = os.getenv("AKAMAI_EDGERC_SECTION")
+
+    try:
+        edgerc = EdgeRc(edgercFile)
+        baseurl = edgerc.get(section, 'host')
+
+        session = requests.Session()
+        session.auth = EdgeGridAuth.from_edgerc(edgerc, section)
+
+        return baseurl, session
+    except configparser.NoSectionError:
+        rootLogger.error("Edgerc section \"%s\" not found" % section)
+        exit(1)
+    except Exception:
+        rootLogger.info("Unknown error occurred trying to read edgerc file (%s)" % edgercFile)
+        exit(1)
 
 
-parser.add_argument("-debug",help="DEBUG mode to generate additional logs for troubleshooting",action="store_true")
+def cli():
+    prog = get_prog_name()
+    if len(sys.argv) == 1:
+        prog += " [command]"
 
-args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='Akamai CLI for Visitor Prioritization', add_help=False, prog=prog)
+    parser.add_argument('--version', action='version', version='%(prog)s ' + PACKAGE_VERSION)
+
+    subparsers = parser.add_subparsers(title='Commands', dest="command", metavar="")
+
+    actions = {}
+
+    subparsers.add_parser(name="help", help="Show available help", add_help=False) \
+        .add_argument('args', metavar="", nargs=argparse.REMAINDER)
+
+    actions["setup"] = create_sub_command(subparsers, "setup", "Initial setup to download all necessary policy "
+                                                               "information")
+
+    actions["show"] = create_sub_command(subparsers, "show", "Display general policy details, active policy versions, "
+                                                             "or specific policy version details",
+                                         [
+                                             {
+                                                 "name": "version",
+                                                 "help": "Version number of the policy"
+                                             },
+                                             {
+                                                 "name": "verbose",
+                                                 "help": "Display detailed rule information for a specific version",
+                                                 "action": "store_true"
+                                             },
+                                             {
+                                                 "name": "from-version",
+                                                 "help": "Display policy versions starting from the version number specified"
+                                             }
+                                         ],
+                                         [
+                                             {
+                                                 "name": "policy",
+                                                 "help": "Policy name"
+                                             }
+                                         ])
+
+    actions["generate-rules"] = create_sub_command(subparsers, "generate-rules", "Generate the policy version rules json and output to "
+                                                           "rules folder. (Optionally, use -outputfile to specify "
+                                                           "location of outputfile)",
+                                                   [
+                                                       {
+                                                           "name": "output-file",
+                                                           "help": "Output filename to store the rules"
+                                                       }
+                                                   ],
+                                                   [
+                                                       {
+                                                           "name": "policy",
+                                                           "help": "Policy name"
+                                                       },
+                                                       {
+                                                           "name": "version",
+                                                           "help": "Version number of the policy"
+                                                       }
+                                                   ])
+
+    actions["create-version"] = create_sub_command(subparsers, "create-version", "Create a new policy version using a local file from the "
+                                                           "rules folder with name <policy>.json",
+                                                   [
+                                                       {
+                                                           "name": "force",
+                                                           "help": "Do not prompt for user confirmation",
+                                                           "action": "store_true"
+                                                       }
+                                                   ],
+                                                   [
+                                                       {
+                                                           "name": "policy",
+                                                           "help": "Policy name"
+                                                       },
+                                                       {
+                                                           "name": "file",
+                                                           "help": "File path for input rules file"
+                                                       }
+                                                   ])
+
+    actions["activate"] = create_sub_command(subparsers, "activate", "Activate a specific policy version",
+                                             [
+                                                 {
+                                                     "name": "policy",
+                                                     "help": "Policy name"
+                                                 }
+                                             ],
+                                             [
+                                                 {
+                                                     "name": "network",
+                                                     "help": "Network to be activated on (case-insensitive).",
+                                                     "type": str.lower,
+                                                     "choices": set(("staging", "production"))
+                                                 },
+                                                 {
+                                                     "name": "version",
+                                                     "help": "Version number of the policy"
+                                                 }
+                                             ])
+
+    actions["throttle"] = create_sub_command(subparsers, "throttle", "Throttle traffic by rule name",
+                                             [
+                                                 {
+                                                     "name": "throttle",
+                                                     "help": "Throttle value (-1 to 100)"
+                                                 },
+                                                 {
+                                                     "name": "disable",
+                                                     "help": "Disable all throttling",
+                                                     "action": "store_true"
+                                                 },
+                                                 {
+                                                     "name": "network",
+                                                     "help": "Network to be activated on (case-insensitive).",
+                                                     "type": str.lower,
+                                                     "choices": set(("staging", "production"))
+                                                 },
+                                                 {
+                                                     "name": "rule",
+                                                     "help": "Rule name to update (use 'single quotes' to honor "
+                                                             "spaces in rule name))"
+                                                 },
+                                                 {
+                                                     "name": "force",
+                                                     "help": "Do not prompt for user confirmation",
+                                                     "action": "store_true"
+                                                 }
+                                             ],
+                                             [
+                                                 {
+                                                     "name": "policy",
+                                                     "help": "Policy name"
+                                                 }
+                                             ])
+
+    actions["list"] = create_sub_command(subparsers, "list", "List all Visitor Prioritization policy names")
+
+    args = parser.parse_args()
+
+    if len(sys.argv) <= 1:
+        parser.print_help()
+        return 0
+
+    if args.command == "help":
+        if len(args.args) > 0:
+            if actions[args.args[0]]:
+                actions[args.args[0]].print_help()
+        else:
+            parser.prog = get_prog_name() + " help [command]"
+            parser.print_help()
+        return 0
+
+    if args.command != "setup":
+        confirm_setup(args)
+
+    return getattr(sys.modules[__name__], args.command.replace("-", "_"))(args)
 
 
-#Check for valid command line arguments
-if not args.setup and not args.getDetail and not args.policy \
-    and not args.version and not args.generateRulesJson and not args.createVersion and not args.activate \
-    and not args.network and not args.debug and not args.outputfile and not args.file and not args.throttle \
-    and not args.rule and not args.listPolicies and not args.verbose:
-    rootLogger.info("Use -h for help options")
-    exit(-1)
+def create_sub_command(subparsers, name, help, optional_arguments=None, required_arguments=None):
+    action = subparsers.add_parser(name=name, help=help, add_help=False)
 
-#Override log level if user wants to run in debug mode
-#Set Log Level to DEBUG, INFO, WARNING, ERROR, CRITICAL
-if args.debug:
-    rootLogger.setLevel(logging.DEBUG)
+    if required_arguments:
+        required = action.add_argument_group("required arguments")
+        for arg in required_arguments:
+            name = arg["name"]
+            del arg["name"]
+            required.add_argument("--" + name,
+                                  **arg,
+                                  required=True
+                                  )
+
+    optional = action.add_argument_group("optional arguments")
+    if optional_arguments:
+        for arg in optional_arguments:
+            name = arg["name"]
+            del arg["name"]
+            optional.add_argument("--" + name,
+                                  **arg,
+                                  required=False
+                                  )
+
+    optional.add_argument("--edgerc",
+                          help="Location of the credentials file [$AKAMAI_EDGERC]",
+                          default=os.path.join(os.path.expanduser("~"), '.edgerc'))
+
+    optional.add_argument("--section",
+                          help="Section of the credentials file [$AKAMAI_EDGERC_SECTION]",
+                          default="cloudlets")
+
+    optional.add_argument("--debug",
+                          help="DEBUG mode to generate additional logs for troubleshooting",
+                          action="store_true")
+
+    return action
 
 
-if args.setup:
-    rootLogger.info('Setting up required files.... please wait')
-    #Create the wrapper object to make calls
-    cloudletObject = cloudlet(access_hostname)
+def setup(args):
+    baseUrl, session = initConfig(args.edgerc, args.section)
+
+    rootLogger.info('Setting up required files... please wait')
+    # Create the wrapper object to make calls
+    cloudletObject = cloudlet(baseUrl)
     groupResponse = cloudletObject.listCloudletGroups(session)
     rootLogger.info('Processing groups...')
     if groupResponse.status_code == 200:
         groupPath = 'groups'
-        #Delete the groups folder before we start
+        # Delete the groups folder before we start
         if os.path.exists('groups'):
             shutil.rmtree('groups')
         if not os.path.exists(groupPath):
             os.makedirs(groupPath)
-        with open(os.path.join(groupPath,'groups.json'),'w') as groupFile:
+        with open(os.path.join(groupPath, 'groups.json'), 'w') as groupFile:
             groupsResponseJson = groupResponse.json()
-            #Find number of groups using len function
+            # Find number of groups using len function
             totalGroups = len(groupsResponseJson)
             groupOutput = []
             for everyGroup in groupsResponseJson:
@@ -131,11 +308,11 @@ if args.setup:
                 groupInfo['groupName'] = everyGroup['groupName']
                 groupInfo['groupId'] = everyGroup['groupId']
                 groupOutput.append(groupInfo)
-            groupFile.write(json.dumps(groupOutput,indent=4))
+            groupFile.write(json.dumps(groupOutput, indent=4))
 
-        policyPath = 'policies'
+        policyPath = os.path.join(get_cache_dir(), 'policies')
         policiesList = []
-        #Delete the policies folder before we start
+        # Delete the policies folder before we start
         if os.path.exists('policies'):
             shutil.rmtree('policies')
         if not os.path.exists(policyPath):
@@ -146,7 +323,9 @@ if args.setup:
         for everyGroup in groupResponse.json():
             groupId = everyGroup['groupId']
             groupName = everyGroup['groupName']
-            rootLogger.info('Processing ' + str(counter) + ' of ' + str(totalGroups) + ' groups, groupId and name is: ' + str(groupId) + ': ' + groupName)
+            rootLogger.info(
+                'Processing ' + str(counter) + ' of ' + str(totalGroups) + ' groups, groupId and name is: ' + str(
+                    groupId) + ': ' + groupName)
             counter += 1
             cloudletPolicies = cloudletObject.listPolicies(session=session, groupId=groupId, cloudletCode='VP')
             if cloudletPolicies.status_code == 200:
@@ -160,10 +339,10 @@ if args.setup:
                     policyDetails['groupId'] = everyPolicy['groupId']
                     if everyPolicy['name'] not in policiesList:
                         policiesList.append(everyPolicy['name'])
-                        with open(os.path.join(policyPath, policyName),'w') as policyFileHandler:
-                            policyFileHandler.write(json.dumps(policyDetails,indent=4))
+                        with open(os.path.join(policyPath, policyName), 'w') as policyFileHandler:
+                            policyFileHandler.write(json.dumps(policyDetails, indent=4))
                     else:
-                        #This policy is already processed so move on
+                        # This policy is already processed so move on
                         rootLogger.debug('Duplicate policy in another group again ' + everyPolicy['name'])
                         pass
             else:
@@ -172,26 +351,31 @@ if args.setup:
         for everyPolicyName in policiesList:
             print(everyPolicyName)
 
-if args.getDetail:
-    if not args.policy:
-        rootLogger.info('Please enter policy name using -policy option.')
-        exit(-1)
+    return 0
+
+
+def show(args):
+    baseUrl, session = initConfig(args.edgerc, args.section)
+
     policy = args.policy
-    cloudletObject = cloudlet(access_hostname)
-    policiesFolder = 'policies'
+    version = args.version
+    verbose = args.verbose
+    fromVersion = args.from_version
+
+    cloudletObject = cloudlet(baseUrl)
+    policiesFolder = os.path.join(get_cache_dir(), 'policies')
     for root, dirs, files in os.walk(policiesFolder):
         localPolicyFile = policy + '.json'
         if localPolicyFile in files:
-            #rootLogger.info(policy + ' Found')
-            with open(os.path.join(policiesFolder,localPolicyFile), mode='r') as policyFileHandler:
+            # rootLogger.info(policy + ' Found')
+            with open(os.path.join(policiesFolder, localPolicyFile), mode='r') as policyFileHandler:
                 policyStringContent = policyFileHandler.read()
-            #rootLogger.info(policyStringContent)
+            # rootLogger.info(policyStringContent)
             policyJsonContent = json.loads(policyStringContent)
             policy_groupId = policyJsonContent['groupId']
             policy_policyId = policyJsonContent['policyId']
             rootLogger.info('Fetching policy details...')
-            if args.version:
-                version = args.version
+            if version:
                 policyDetail = cloudletObject.getCloudletPolicy(session, policy_policyId, version=args.version)
                 rootLogger.debug(json.dumps(policyDetail.json()))
                 everyVersionDetail = policyDetail.json()
@@ -199,116 +383,125 @@ if args.getDetail:
                     if not everyVersionDetail['deleted']:
                         rootLogger.info('\nDetails of version: ' + str(everyVersionDetail['version']))
                         rootLogger.info('Policy created by: ' + everyVersionDetail['createdBy'] + '\n')
-                        #Need to check for match rules, sometimes we see null values
+                        # Need to check for match rules, sometimes we see null values
                         if everyVersionDetail['matchRules'] is not None:
-                            if not args.verbose:
+                            if not verbose:
                                 for everyMatchRule in everyVersionDetail['matchRules']:
                                     multipleMatches = 0
-                                    #Loop each match conditon within each rule
-                                    #Check wthether rules is disabled, if yes display accordingly
+                                    # Loop each match conditon within each rule
+                                    # Check wthether rules is disabled, if yes display accordingly
                                     if 'disabled' in everyMatchRule and everyMatchRule['disabled'] is True:
-                                        status='DISABLED'
+                                        status = 'DISABLED'
                                     else:
-                                        status='ACTIVE'
-                                    print('   ' + everyMatchRule['name'] + ' -> ' + str(everyMatchRule['passThroughPercent']) + ' -> ' + status)
-                                print('\nNOTE: You can pass -verbose as an additional argument to get detailed rule information')
-                            if args.verbose:
-                                    rootLogger.info('     Match Criteria and Rule Details are: ')
+                                        status = 'ACTIVE'
+                                    print('   ' + everyMatchRule['name'] + ' -> ' + str(
+                                        everyMatchRule['passThroughPercent']) + ' -> ' + status)
+                                print(
+                                    '\nNOTE: You can pass -verbose as an additional argument to get detailed rule information')
+                            if verbose:
+                                rootLogger.info('     Match Criteria and Rule Details are: ')
+                                rootLogger.info('\n       ----------------------------------------------       \n')
+                                for everyMatchRule in everyVersionDetail['matchRules']:
+                                    multipleMatches = 0
+                                    rootLogger.info('       Rule Name: ' + everyMatchRule['name'])
+                                    rootLogger.info(
+                                        '       Traffic Percentage: ' + str(everyMatchRule['passThroughPercent']))
+                                    rootLogger.info('')
+                                    # Loop each match conditon within each rule
+                                    for everyMatchCondition in everyMatchRule['matches']:
+                                        if multipleMatches == 1:
+                                            rootLogger.info('       AND')
+                                        rootLogger.info('       Match Type: ' + everyMatchCondition['matchType'])
+                                        rootLogger.info('       Match Value: ' + everyMatchCondition['matchValue'])
+                                        multipleMatches = 1
+                                    # Check wthether rules is disabled, if yes display accordingly
+                                    if 'disabled' in everyMatchRule and everyMatchRule['disabled'] is True:
+                                        rootLogger.info('\n       Rule is DISABLED')
+                                    else:
+                                        rootLogger.info('\n       Rule is ACTIVE')
                                     rootLogger.info('\n       ----------------------------------------------       \n')
-                                    for everyMatchRule in everyVersionDetail['matchRules']:
-                                        multipleMatches = 0
-                                        rootLogger.info('       Rule Name: ' + everyMatchRule['name'])
-                                        rootLogger.info('       Traffic Percentage: ' + str(everyMatchRule['passThroughPercent']))
-                                        rootLogger.info('')
-                                        # Loop each match conditon within each rule
-                                        for everyMatchCondition in everyMatchRule['matches']:
-                                            if multipleMatches == 1:
-                                                rootLogger.info('       AND')
-                                            rootLogger.info('       Match Type: ' + everyMatchCondition['matchType'])
-                                            rootLogger.info('       Match Value: ' + everyMatchCondition['matchValue'])
-                                            multipleMatches = 1
-                                        # Check wthether rules is disabled, if yes display accordingly
-                                        if 'disabled' in everyMatchRule and everyMatchRule['disabled'] is True:
-                                            rootLogger.info('\n       Rule is DISABLED')
-                                        else:
-                                            rootLogger.info('\n       Rule is ACTIVE')
-                                        rootLogger.info('\n       ----------------------------------------------       \n')
                         else:
                             rootLogger.info('\nThere are no match criterias for this rule\n')
                 else:
                     rootLogger.info('Requested policy version does not exist - please check version number')
             else:
                 policyDetails = cloudletObject.getCloudletPolicy(session, policy_policyId)
-                #rootLogger.info(json.dumps(policyDetails.json()))
+                # rootLogger.info(json.dumps(policyDetails.json()))
                 rootLogger.info('\nPolicy Details:')
                 rootLogger.info('-----------------')
                 rootLogger.info('Policy Description: ' + policyDetails.json()['description'] + '\n')
                 for everyactivationDetail in policyDetails.json()['activations']:
                     if everyactivationDetail['policyInfo']['status'] == 'active':
-                        rootLogger.info('Version ' + str(everyactivationDetail['policyInfo']['version']) + ' is live in ' +  str(everyactivationDetail['network']) + ' for configuration: ' + str(everyactivationDetail['propertyInfo']['name']) + ' v' + str(everyactivationDetail['propertyInfo']['version']))
-                        #rootLogger.info(everyactivationDetail['network'] + ' Version: ' + str(everyactivationDetail['policyInfo']['version']) + '\n')
+                        rootLogger.info(
+                            'Version ' + str(everyactivationDetail['policyInfo']['version']) + ' is live in ' + str(
+                                everyactivationDetail['network']) + ' for configuration: ' + str(
+                                everyactivationDetail['propertyInfo']['name']) + ' v' + str(
+                                everyactivationDetail['propertyInfo']['version']))
 
-                if not args.fromVersion:
+                if not fromVersion:
                     policyVersions = cloudletObject.listPolicyVersions(session, policy_policyId, pageSize='10')
-                    rootLogger.info('\nFetching last 10 policy version details... You can pass -fromVersion to list more versions.')
+                    rootLogger.info(
+                        '\nFetching last 10 policy version details... You can pass -fromVersion to list more versions.')
                 else:
                     policyVersions = cloudletObject.listPolicyVersions(session, policy_policyId)
-                    rootLogger.info('\nShowing policy version details from version ' + str(args.fromVersion))
+                    rootLogger.info('\nShowing policy version details from version ' + str(fromVersion))
                 rootLogger.info('\nVersion Details (Version : Description)')
                 rootLogger.info('------------------------------------------')
                 for everyVersion in policyVersions.json():
-                    if args.fromVersion:
-                      if int(everyVersion['version']) >= int(args.fromVersion):
-                        rootLogger.info(str(everyVersion['version']) + ' : ' + str(everyVersion['description']))
+                    if fromVersion:
+                        if int(everyVersion['version']) >= int(fromVersion):
+                            rootLogger.info(str(everyVersion['version']) + ' : ' + str(everyVersion['description']))
                     else:
                         rootLogger.info(str(everyVersion['version']) + ' : ' + str(everyVersion['description']))
 
-                rootLogger.info('\nNOTE: You can pass -version <version_number> as an additional argument to get version specific details\n')
+                rootLogger.info(
+                    '\nNOTE: You can pass -version <version_number> as an additional argument to get version specific '
+                    'details\n')
 
         else:
-            rootLogger.info('\nLocal datastore does not have this policy. Please double check policy name or run -setup first')
-            exit(-1)
+            rootLogger.info(
+                '\nLocal datastore does not have this policy. Please double check policy name or run -setup first')
+            exit(1)
 
-if args.generateRulesJson:
-    if not args.policy:
-        rootLogger.info('Please enter policy name using -policy option.')
-        exit(-1)
+
+def generate_rules_json(args):
+    baseUrl, session = initConfig(args.edgerc, args.section)
+
     policy = args.policy
-    if not args.version:
-        rootLogger.info('Please enter the version number using -version option\n')
-        exit(-1)
     version = args.version
-    cloudletObject = cloudlet(access_hostname)
-    policiesFolder = 'policies'
+    output_file = args.output_file
+
+    cloudletObject = cloudlet(baseUrl)
+    policiesFolder = os.path.join(get_cache_dir(), 'policies')
     for root, dirs, files in os.walk(policiesFolder):
         localPolicyFile = policy + '.json'
         if localPolicyFile in files:
-            #rootLogger.info(policy + ' Found')
-            with open(os.path.join(policiesFolder,localPolicyFile), mode='r') as policyFileHandler:
+            # rootLogger.info(policy + ' Found')
+            with open(os.path.join(policiesFolder, localPolicyFile), mode='r') as policyFileHandler:
                 policyStringContent = policyFileHandler.read()
-            #rootLogger.info(policyStringContent)
+            # rootLogger.info(policyStringContent)
             policyJsonContent = json.loads(policyStringContent)
             policy_groupId = policyJsonContent['groupId']
             policy_policyId = policyJsonContent['policyId']
             rootLogger.info('\nFetching policy rule details...')
             policyDetails = cloudletObject.getCloudletPolicy(session, policy_policyId, version=version)
             if policyDetails.status_code == 200:
-                #rootLogger.info(json.dumps(policyDetails.json()))
-                #Update the local copy to latest details
-                if args.outputfile:
-                    outputfilename = args.outputfile
+                # rootLogger.info(json.dumps(policyDetails.json()))
+                # Update the local copy to latest details
+                if output_file:
+                    outputfilename = output_file
                 else:
                     newPolicyFolder = 'rules'
                     if not os.path.exists(newPolicyFolder):
                         os.makedirs(newPolicyFolder)
-                    newPolicyFile = args.policy + '_rules.json'
-                    outputfilename = os.path.join(newPolicyFolder,newPolicyFile)
+                    newPolicyFile = policy + '_rules.json'
+                    outputfilename = os.path.join(newPolicyFolder, newPolicyFile)
                 policyDetailsToFile = {}
                 everyDetailofPolicy = policyDetails.json()
                 if 'description' in everyDetailofPolicy:
                     policyDetailsToFile['description'] = everyDetailofPolicy['description']
                 if 'matchRules' in everyDetailofPolicy:
-                    #Check whether it is null value
+                    # Check whether it is null value
                     if everyDetailofPolicy['matchRules'] is not None:
                         matchRulesSection = everyDetailofPolicy['matchRules']
                         for everyMatchRule in matchRulesSection:
@@ -319,310 +512,281 @@ if args.generateRulesJson:
                     policyDetailsToFile['description'] = 'This is a version created using API'
 
                 with open(outputfilename, mode='w') as policyFileHandler:
-                    policyFileHandler.write(json.dumps(policyDetailsToFile,indent=4))
-                rootLogger.info('\nGenerated policy rule details in json format. File output location is: ' + outputfilename)
+                    policyFileHandler.write(json.dumps(policyDetailsToFile, indent=4))
+                rootLogger.info(
+                    '\nGenerated policy rule details in json format. File output location is: ' + outputfilename)
             else:
                 rootLogger.info('Unable to fetch version details. Check the version number')
-                exit(-1)
+                return 1
         else:
-            rootLogger.info('\nLocal datastore does not have this policy. Please double check policy name or run -setup first')
-            exit(-1)
+            rootLogger.info(
+                '\nLocal datastore does not have this policy. Please double check policy name or run -setup first')
+            return 1
 
-if args.createVersion:
-    if not args.policy:
-        rootLogger.info('Please enter policy name using -policy option.')
-        exit(-1)
+    return 0
 
-    rootLogger.info('\nDoes your rules json file have the proper description field updated?  This will be used as comments for this version\n')
 
-    if not args.ignorePrompt:
-        rootLogger.info('\nPress Y to continue and N to exit.')
-        option = input()
-    else:
-        #If we are ignoring the prompt, set option to Y
-        option = 'Y'
-        rootLogger.info('\nignorePrompt flag specified. Proceeding automatically...\n')
+def create_version(args):
+    baseUrl, session = initConfig(args.edgerc, args.section)
 
-    if option == 'Y' or option == 'y':
-        policy = args.policy
-        cloudletObject = cloudlet(access_hostname)
-        policiesFolder = 'policies'
-        for root, dirs, files in os.walk(policiesFolder):
-            localPolicyFile = policy + '.json'
-            if localPolicyFile in files:
-                rootLogger.info('Found policy: ' + policy + ' and using policyId from local store...')
-                with open(os.path.join(policiesFolder,localPolicyFile), mode='r') as policyFileHandler:
-                    policyStringContent = policyFileHandler.read()
-                #rootLogger.info(policyStringContent)
-                policyJsonContent = json.loads(policyStringContent)
-                policy_groupId = policyJsonContent['groupId']
-                policy_policyId = policyJsonContent['policyId']
+    if not args.force:
+        rootLogger.info('\nThe description field will be used as comments for this version\n')
+        rootLogger.info('\nDoes your rules json file have the proper description field updated? [y/N]\n')
+        if not str.lower(input()) == "y":
+            rootLogger.info('\nExiting the program, you may run it again after updating description\n')
+            return 1
 
-                newPolicyFolder = 'rules'
-                newPolicyFile = args.policy + '_rules.json'
-                if args.file:
-                    customFile = args.file
-                    rulesFile = os.path.join(newPolicyFolder,customFile)
-                else:
-                    rootLogger.info('\n-file option was not specified. Picking rules file from: ' + os.path.join(newPolicyFolder,newPolicyFile))
-                    rulesFile = os.path.join(newPolicyFolder,newPolicyFile)
-                try:
-                    with open(rulesFile, mode='r') as policyData:
-                        policyDetails = json.load(policyData)
-                        policyDetailsJson = json.dumps(policyDetails)
-                    policyCreateResponse = cloudletObject.createPolicyVersion(session, policyId=policy_policyId)
-                    rootLogger.info('Trying to create a new version of this policy...')
-                    if policyCreateResponse.status_code == 200 or 201:
-                        newVersion = policyCreateResponse.json()['version']
-                        policyUpdateResponse = cloudletObject.updatePolicyVersion(session, policy_policyId, policyDetailsJson, newVersion)
-                        if policyUpdateResponse.status_code == 200:
-                            rootLogger.info('Success! Created policy version number ' + str(policyUpdateResponse.json()['version']))
-                        else:
-                            rootLogger.info('Cannot create new policy version, Reason: ' + policyUpdateResponse.json()['detail'])
-                            rootLogger.debug('Detailed Json response is: ' + policyUpdateResponse.json())
-                    else:
-                        rootLogger.info('Unable to create the policy.')
-                except FileNotFoundError:
-                    rootLogger.info('\n' + os.path.join(newPolicyFolder,newPolicyFile) + ' is not found. This file is the default source for uploading rules.\n')
-                    rootLogger.info('You may want to use -generateRulesJson <policyname> first\n')
-            else:
-                rootLogger.info('\nLocal datastore does not have this policy. Please double check policy name or run -setup first')
-    else:
-        rootLogger.info('\nExiting the program, you may run it again after updating description\n')
-        exit(-1)
-
-if args.activate:
-    if not args.policy:
-        rootLogger.info('Please enter policy name using -policy option.')
-        exit(-1)
     policy = args.policy
-    if not args.version:
-        rootLogger.info('Please enter the version number using -version option\n')
-        exit(-1)
+    file = args.file
+
+    cloudletObject = cloudlet(baseUrl)
+    policiesFolder = os.path.join(get_cache_dir(), 'policies')
+    for root, dirs, files in os.walk(policiesFolder):
+        localPolicyFile = policy + '.json'
+        if localPolicyFile in files:
+            rootLogger.info('Found policy: ' + policy + ' and using policyId from local store...')
+            with open(os.path.join(policiesFolder, localPolicyFile), mode='r') as policyFileHandler:
+                policyStringContent = policyFileHandler.read()
+            # rootLogger.info(policyStringContent)
+            policyJsonContent = json.loads(policyStringContent)
+            policy_groupId = policyJsonContent['groupId']
+            policy_policyId = policyJsonContent['policyId']
+
+            newPolicyFolder = 'rules'
+            newPolicyFile = policy + '_rules.json'
+            if file:
+                customFile = file
+                rulesFile = os.path.join(newPolicyFolder, customFile)
+            else:
+                rootLogger.info(
+                    '\n-file option was not specified. Picking rules file from: ' + os.path.join(newPolicyFolder,
+                                                                                                 newPolicyFile))
+                rulesFile = os.path.join(newPolicyFolder, newPolicyFile)
+            try:
+                with open(rulesFile, mode='r') as policyData:
+                    policyDetails = json.load(policyData)
+                    policyDetailsJson = json.dumps(policyDetails)
+                policyCreateResponse = cloudletObject.createPolicyVersion(session, policyId=policy_policyId)
+                rootLogger.info('Trying to create a new version of this policy...')
+                if policyCreateResponse.status_code == 200 or 201:
+                    newVersion = policyCreateResponse.json()['version']
+                    policyUpdateResponse = cloudletObject.updatePolicyVersion(session, policy_policyId,
+                                                                              policyDetailsJson, newVersion)
+                    if policyUpdateResponse.status_code == 200:
+                        rootLogger.info(
+                            'Success! Created policy version number ' + str(policyUpdateResponse.json()['version']))
+                    else:
+                        rootLogger.info(
+                            'Cannot create new policy version, Reason: ' + policyUpdateResponse.json()['detail'])
+                        rootLogger.debug('Detailed Json response is: ' + policyUpdateResponse.json())
+                else:
+                    rootLogger.info('Unable to create the policy.')
+            except FileNotFoundError:
+                rootLogger.info('\n' + os.path.join(newPolicyFolder,
+                                                    newPolicyFile) + ' is not found. This file is the default source for uploading rules.\n')
+                rootLogger.info('You may want to use -generateRulesJson <policyname> first\n')
+        else:
+            rootLogger.info(
+                '\nLocal datastore does not have this policy. Please double check policy name or run -setup first')
+
+    return 0
+
+def activate(args):
+    baseUrl, session = initConfig(args.edgerc, args.section)
+
+    policy = args.policy
     version = args.version
-    if not args.network:
-        rootLogger.info('Please enter the network to be activated on using -network option\n')
-        exit(-1)
     network = args.network
-    if network != 'staging' and network != 'prod' and network != 'production':
-        rootLogger.info('Allowed values for network are staging and prod/production\n')
-        exit(-1)
-    #Over-rider production as prod
-    if args.network == 'production':
-        args.network = 'prod'
+
+    if network == 'production':
         network = 'prod'
 
-    cloudletObject = cloudlet(access_hostname)
-    policiesFolder = 'policies'
+    cloudletObject = cloudlet(baseUrl)
+    policiesFolder = os.path.join(get_cache_dir(), 'policies')
     for root, dirs, files in os.walk(policiesFolder):
         localPolicyFile = policy + '.json'
         if localPolicyFile in files:
             rootLogger.info(policy + ' file is Found... Using policyId from local store...')
-            with open(os.path.join(policiesFolder,localPolicyFile), mode='r') as policyFileHandler:
+            with open(os.path.join(policiesFolder, localPolicyFile), mode='r') as policyFileHandler:
                 policyStringContent = policyFileHandler.read()
-            #rootLogger.info(policyStringContent)
             policyJsonContent = json.loads(policyStringContent)
             policy_groupId = policyJsonContent['groupId']
             policy_policyId = policyJsonContent['policyId']
-            #rootLogger.info(json.dumps(policyDetails.json()))
-            #Update the local copy to latest details
-            rootLogger.info('Trying to activate policy ' + policy + ' version ' + version + ' to ' + network + ' network')
+
+            # Update the local copy to latest details
+            rootLogger.info(
+                'Trying to activate policy ' + policy + ' version ' + version + ' to ' + network + ' network')
+
             activationResponse = cloudletObject.activatePolicyVersion(session, policy_policyId, version, network)
             if activationResponse.status_code == 200:
                 rootLogger.info('Success! Policy version is activated')
             else:
                 rootLogger.info('Unable to activate, check the version number.')
-                exit(-1)
+                return 1
         else:
-            rootLogger.info('\nLocal datastore does not have this policy. Please double check policy name or run -setup first')
-            exit(-1)
+            rootLogger.info(
+                '\nLocal datastore does not have this policy. Please double check policy name or run "setup" first')
+            return 1
 
-if args.throttle:
-    #Validation steps begin
-    try:
-        if args.throttle.lower()=='disabled':
-            pass
-        elif -1 <= int(args.throttle) <= 100:
-            pass
+    return 0
+
+
+def throttle(args):
+    baseUrl, session = initConfig(args.edgerc, args.section)
+
+    policy = args.policy
+    network = args.network
+    rule = args.rule
+    throttle = args.throttle.lower()
+    disable = args.disable
+    force = args.force
+
+    if not disable and not throttle:
+        print("One of --throttle or --disable must be specified")
+        return 1
+
+    if -1 <= int(throttle) <= 100:
+        print("Invalid --throttle value, please specify a value between -1 and 100")
+        return 1
+
+    if not force:
+        if not disable:
+            rootLogger.info('You are about to throttle ' + rule + ' at value = ' + str(
+                throttle) + ' for ' + policy + ' on the Akamai ' + network + ' network. Do you wish to continue? [y/N]')
         else:
-            rootLogger.info('throttle is not a valid number. Use -h to know more..')
-            exit(-1)
-    except ValueError:
-        print("Invalid -throttle value, please specify either disabled or value between -1 and 100")
-        exit(-1)
-    if not args.policy:
-        rootLogger.info('Please enter policy name using -policy option.')
-        exit(-1)
-    if not args.network:
-        rootLogger.info('Please enter network type (staging or prod), to base the version on')
-        exit(-1)
-    if not args.rule:
-        rootLogger.info("Please enter rule name using -rule option")
-        exit(-1)
+            rootLogger.info(
+                'You are about to disable ' + rule + ' for ' + policy + ' on the Akamai ' + network + ' network. Do you wish to continue? [y/N]')
 
-    #Over-rider production as prod
-    if args.network == 'production':
-        args.network = 'prod'
+        if str.lower(input()) != 'y':
+            rootLogger.info('Exiting...')
+
+    if network == 'production':
         network = 'prod'
 
-    if args.network == 'staging':
-        if not args.ignorePrompt:
-            if not args.throttle.lower()=='disabled':
-                rootLogger.info('You are about to throttle ' + args.rule + ' at value = ' + str(args.throttle) + ' for ' + args.policy + ' on the Akamai ' + args.network + ' network. Do you wish to continue? (Press Y or N)')
+    cloudletObject = cloudlet(baseUrl)
+    policiesFolder = os.path.join(get_cache_dir(), 'policies')
+    for root, dirs, files in os.walk(policiesFolder):
+        localPolicyFile = policy + '.json'
+        # Read the policy file to fetch policy ID
+        if localPolicyFile in files:
+            with open(os.path.join(policiesFolder, localPolicyFile), mode='r') as policyFileHandler:
+                policyStringContent = policyFileHandler.read()
+            policyJsonContent = json.loads(policyStringContent)
+            policy_groupId = policyJsonContent['groupId']
+            policy_policyId = policyJsonContent['policyId']
+            rootLogger.info('Fetching policy details...')
+
+            # Fetch policy details to identify the version
+            policyDetails = cloudletObject.getCloudletPolicy(session, policy_policyId)
+            stagingVersion = str(-1)
+            prodVersion = str(-1)
+            for everyactivationDetail in policyDetails.json()['activations']:
+                if everyactivationDetail['policyInfo']['status'] == 'active':
+                    if everyactivationDetail['network'] == 'staging':
+                        stagingVersion = str(everyactivationDetail['policyInfo']['version'])
+                    elif everyactivationDetail['network'] == 'prod':
+                        prodVersion = str(everyactivationDetail['policyInfo']['version'])
+
+            # Check which network is of interest, and base the version number
+            if network == 'staging' and stagingVersion != '-1':
+                version = stagingVersion
+            elif network == 'prod' and prodVersion != '-1':
+                version = prodVersion
             else:
-                rootLogger.info('You are about to disable ' + args.rule + ' for ' + args.policy + ' on the Akamai ' + args.network + ' network. Do you wish to continue? (Press Y or N)')
-            decision = input()
-        else:
-            #If we are ignoring prompt, set the decision to Y
-            decision = 'Y'
-            rootLogger.info('\nignorePrompt flag specified. Proceeding automatically...\n')
+                rootLogger.info('No current version live in ' + network + ' network. Exiting...')
+                exit(1)
 
-        if decision == 'N' or decision == 'n':
-            rootLogger.info('Exiting...')
-            exit(-1)
+            rootLogger.info('Found version ' + version + ' live in ' + network + ' network. Using this version...')
+            policyDetails = cloudletObject.getCloudletPolicy(session, policy_policyId, version=version)
+            # rootLogger.info(json.dumps(policyDetails.json(), indent = 4))
 
-    elif args.network == 'prod':
-        if not args.ignorePrompt:
-            if not args.throttle.lower()=='disabled':
-                rootLogger.info('You are about to throttle ' + args.rule + ' at value = ' + str(args.throttle) + ' for ' + args.policy + ' on the Akamai ' + args.network + ' network. Do you wish to continue? (Press Y or N)')
-            else:
-                rootLogger.info('You are about to disable ' + args.rule + ' for ' + args.policy + ' on the Akamai ' + args.network + ' network. Do you wish to continue? (Press Y or N)')
-            decision = input()
-            if decision == 'N' or decision == 'n':
-                rootLogger.info('Exiting...')
-                exit(-1)
-            rootLogger.info('This is the Akamai Production Network. Are you absolutely sure? (Press Y or N)')
-            decision = input()
-            if decision == 'N' or decision == 'n':
-                rootLogger.info('Exiting...')
-                exit(-1)
-        else:
-            #If we are ignoring prompt, set the decision to Y
-            decision = 'Y'
-            rootLogger.info('\nignorePrompt flag specified. Proceeding automatically...\n')
-
-    if args.network != 'staging' and args.network != 'prod' and args.network != 'production':
-        rootLogger.info('Allowed values for network are staging and prod/production\n')
-        exit(-1)
-
-    #Validation steps end
-    #Proceed further only if user intends and has pressed Y or y
-    if decision == 'y' or decision == 'Y':
-        policy = args.policy
-        cloudletObject = cloudlet(access_hostname)
-        policiesFolder = 'policies'
-        for root, dirs, files in os.walk(policiesFolder):
-            localPolicyFile = policy + '.json'
-            #Read the policy file to fetch policy ID
-            if localPolicyFile in files:
-                with open(os.path.join(policiesFolder,localPolicyFile), mode='r') as policyFileHandler:
-                    policyStringContent = policyFileHandler.read()
-                policyJsonContent = json.loads(policyStringContent)
-                policy_groupId = policyJsonContent['groupId']
-                policy_policyId = policyJsonContent['policyId']
-                rootLogger.info('Fetching policy details...')
-
-                #Fetch policy details to identify the version
-                policyDetails = cloudletObject.getCloudletPolicy(session, policy_policyId)
-                stagingVersion = str(-1)
-                prodVersion = str(-1)
-                for everyactivationDetail in policyDetails.json()['activations']:
-                    if everyactivationDetail['policyInfo']['status'] == 'active':
-                        if everyactivationDetail['network'] == 'staging':
-                            stagingVersion = str(everyactivationDetail['policyInfo']['version'])
-                        elif everyactivationDetail['network'] == 'prod':
-                            prodVersion = str(everyactivationDetail['policyInfo']['version'])
-
-                #Check which network is of interest, and base the version number
-                if args.network == 'staging' and stagingVersion != '-1':
-                    version = stagingVersion
-                elif args.network == 'prod'and prodVersion != '-1':
-                    version = prodVersion
-                else:
-                    rootLogger.info('No current version live in ' + args.network + ' network. Exiting...')
-                    exit(-1)
-
-                rootLogger.info('Found version ' + version + ' live in ' + args.network + ' network. Using this version...')
-                policyDetails = cloudletObject.getCloudletPolicy(session, policy_policyId, version=version)
-                #rootLogger.info(json.dumps(policyDetails.json(), indent = 4))
-
-                #Filter the details of policy
-                ruleFound = 0
-                ruleCount = 0
-                policyDetailsToModify = {}
-                everyDetailofPolicy = policyDetails.json()
-                rootLogger.info('\nSearching for Rule: ' + args.rule)
-                if 'matchRules' in everyDetailofPolicy:
-                    #Check whether it is null value
-                    if everyDetailofPolicy['matchRules'] is None:
-                        rootLogger.info('No rules exist in the policy. Exiting...')
-                        exit(-1)
-                    if everyDetailofPolicy['matchRules'] is not None:
-                        matchRulesSection = everyDetailofPolicy['matchRules']
-                        for everyMatchRule in matchRulesSection:
-                            #Delete the location tag, as it causes error while uploading
-                            if 'location' in everyMatchRule:
-                                del everyMatchRule['location']
-                            #Match the rule name (case insensitive)
-                            if everyMatchRule['name'].lower() == args.rule.lower():
-                                #Update the throttle value now
-                                ruleFound = 1
-                                ruleCount = ruleCount + 1
-                                if not args.throttle.lower()=='disabled':
-                                    everyMatchRule['passThroughPercent'] = int(args.throttle)
-                                    # Check wthether rules is disabled, if yes enable it by deleting the disable entry
-                                    if 'disabled' in everyMatchRule and everyMatchRule['disabled'] is True:
-                                        del everyMatchRule['disabled']
-                                if args.throttle.lower()=='disabled':
-                                    everyMatchRule['disabled'] = True
-
-                        policyDetailsToModify['matchRules'] = everyDetailofPolicy['matchRules']
-                        policyDetailsToModify['description'] = 'Created from v' + str(version) + ': Throttle Rule = ' + args.rule + ' to value = ' + str(args.throttle) + ' (VPConfigKit)'
-                        if ruleFound == 0:
-                            rootLogger.info('Rule: ' + args.rule + ' is not found. Exiting...')
-                            exit(-1)
-                        if ruleCount == 1:
-                            rootLogger.info('1 rule has been found...')
-                        else:
-                            rootLogger.info(str(ruleCount) + ' rules have been found...')
-                else:
+            # Filter the details of policy
+            ruleFound = 0
+            ruleCount = 0
+            policyDetailsToModify = {}
+            everyDetailofPolicy = policyDetails.json()
+            rootLogger.info('\nSearching for Rule: ' + rule)
+            if 'matchRules' in everyDetailofPolicy:
+                # Check whether it is null value
+                if everyDetailofPolicy['matchRules'] is None:
                     rootLogger.info('No rules exist in the policy. Exiting...')
-                    exit(-1)
+                    exit(1)
+                if everyDetailofPolicy['matchRules'] is not None:
+                    matchRulesSection = everyDetailofPolicy['matchRules']
+                    for everyMatchRule in matchRulesSection:
+                        # Delete the location tag, as it causes error while uploading
+                        if 'location' in everyMatchRule:
+                            del everyMatchRule['location']
+                        # Match the rule name (case insensitive)
+                        if everyMatchRule['name'].lower() == rule.lower():
+                            # Update the throttle value now
+                            ruleFound = 1
+                            ruleCount = ruleCount + 1
+                            if not disable:
+                                everyMatchRule['passThroughPercent'] = int(throttle)
+                                # Check wthether rules is disabled, if yes enable it by deleting the disable entry
+                                if 'disabled' in everyMatchRule and everyMatchRule['disabled'] is True:
+                                    del everyMatchRule['disabled']
+                            if disable == 'disabled':
+                                everyMatchRule['disabled'] = True
 
-                #Let us now create a new version and update the rules
-                policyCreateResponse = cloudletObject.createPolicyVersion(session, policyId=policy_policyId)
-                rootLogger.info('\nTrying to create a new version of this policy with updated rule throttle.')
-                if policyCreateResponse.status_code == 200 or 201:
-                    newVersion = policyCreateResponse.json()['version']
-                    #Let us now update the rules with new throttle values
-                    policyUpdateResponse = cloudletObject.updatePolicyVersion(session, policy_policyId, json.dumps(policyDetailsToModify), newVersion)
-                    if policyUpdateResponse.status_code == 200:
-                        rootLogger.info('Successfully created new policy version : v' + str(policyUpdateResponse.json()['version']))
-                        #Let us now activate the version
-                        rootLogger.info('Now activating v' + str(policyUpdateResponse.json()['version']) + ' to Akamai ' + args.network + ' network ')
-                        activationResponse = cloudletObject.activatePolicyVersion(session, policy_policyId, str(policyUpdateResponse.json()['version']), args.network)
-                        if activationResponse.status_code == 200:
-                            rootLogger.info('Success! Throttle change is live...')
-                        else:
-                            rootLogger.info('Unable to activate, check for invalid version')
-                            exit(-1)
+                    policyDetailsToModify['matchRules'] = everyDetailofPolicy['matchRules']
+                    policyDetailsToModify['description'] = 'Created from v' + str(
+                        version) + ': Throttle Rule = ' + rule + ' to value = ' + str(
+                        throttle) + ' (Akamai CLI for Visitor Prioritization)'
+                    if ruleFound == 0:
+                        rootLogger.info('Rule: ' + rule + ' is not found. Exiting...')
+                        return 1
+                    if ruleCount == 1:
+                        rootLogger.info('1 rule has been found...')
                     else:
-                        rootLogger.info('Cannot create new policy version, Reason: ' + str(policyUpdateResponse.json()['detail']))
-                        rootLogger.debug('Detailed Json response is: ' + str(policyUpdateResponse.json()))
-                        exit(-1)
-                else:
-                    rootLogger.info('Unable to create the new version of policy.')
-                    exit(-1)
+                        rootLogger.info(str(ruleCount) + ' rules have been found...')
             else:
-                rootLogger.info('\nLocal datastore does not have this policy. Please double check policy name or run -setup first')
-                exit(-1)
-    else:
-        rootLogger.info('You seem to have pressed some other key than Y or N. Exiting program.')
-        exit(-1)
+                rootLogger.info('No rules exist in the policy. Exiting...')
+                return 1
 
-if args.listPolicies:
+            # Let us now create a new version and update the rules
+            policyCreateResponse = cloudletObject.createPolicyVersion(session, policyId=policy_policyId)
+            rootLogger.info('\nTrying to create a new version of this policy with updated rule throttle.')
+            if policyCreateResponse.status_code == 200 or 201:
+                newVersion = policyCreateResponse.json()['version']
+                # Let us now update the rules with new throttle values
+                policyUpdateResponse = cloudletObject.updatePolicyVersion(session, policy_policyId,
+                                                                          json.dumps(policyDetailsToModify),
+                                                                          newVersion)
+                if policyUpdateResponse.status_code == 200:
+                    rootLogger.info(
+                        'Successfully created new policy version : v' + str(policyUpdateResponse.json()['version']))
+                    # Let us now activate the version
+                    rootLogger.info('Now activating v' + str(
+                        policyUpdateResponse.json()['version']) + ' to Akamai ' + network + ' network ')
+                    activationResponse = cloudletObject.activatePolicyVersion(session, policy_policyId, str(
+                        policyUpdateResponse.json()['version']), network)
+                    if activationResponse.status_code == 200:
+                        rootLogger.info('Success! Throttle change is live...')
+                    else:
+                        rootLogger.info('Unable to activate, check for invalid version')
+                        return 1
+                else:
+                    rootLogger.info(
+                        'Cannot create new policy version, Reason: ' + str(policyUpdateResponse.json()['detail']))
+                    rootLogger.debug('Detailed Json response is: ' + str(policyUpdateResponse.json()))
+                    return 1
+            else:
+                rootLogger.info('Unable to create the new version of policy.')
+                return 1
+        else:
+            rootLogger.info(
+                '\nLocal datastore does not have this policy. Please double check policy name or run -setup first')
+            return 1
+
+    return 0
+
+
+def list(args):
     counter = 1
-    policiesFolder = 'policies'
+    policiesFolder = os.path.join(get_cache_dir(), 'policies')
+
     rootLogger.info('\n\nAvailable policies are: ')
     rootLogger.info('--------------------------\n')
     for root, dirs, files in os.walk(policiesFolder):
@@ -633,5 +797,41 @@ if args.listPolicies:
                 counter += 1
     rootLogger.info('\n--------------------------\n')
 
-#Final or common Successful exit
-exit(0)
+    return 0
+
+
+def confirm_setup(args):
+    policiesDir = os.path.join(get_cache_dir(), 'policies')
+
+    if not os.access(policiesDir, os.W_OK):
+        print("Cache not found. You must create it to continue [Y/n]:", end=' ')
+
+        if str.lower(input()) == 'n':
+            rootLogger.info('Exiting.')
+            exit(1)
+
+        return setup(args)
+
+    return
+
+
+def get_prog_name():
+    prog = os.path.basename(sys.argv[0])
+    if os.getenv("AKAMAI_CLI"):
+        prog = "akamai cloudlet-vp"
+    return prog
+
+
+def get_cache_dir():
+    if os.getenv("AKAMAI_CLI_CACHE_DIR"):
+        return os.getenv("AKAMAI_CLI_CACHE_DIR")
+
+    return os.curdir
+
+
+if __name__ == '__main__':
+    try:
+        status = cli()
+        exit(status)
+    except KeyboardInterrupt:
+        exit(1)
