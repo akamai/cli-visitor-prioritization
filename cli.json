@@ -4,9 +4,9 @@
   },
   "commands": [
     {
-      "name": "vpcloudlet",
+      "name": "cloudlet-vp",
       "version": "0.1.0",
-      "description": "Akamai API kit to access and control Visitor Prioritization cloudlet"
+      "description": "Access and control Visitor Prioritization cloudlet"
     }
   ]
 }
