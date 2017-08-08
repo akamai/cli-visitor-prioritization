@@ -136,10 +136,10 @@ def cli():
               "Display policy versions starting from the version number specified"}],
         [{"name": "policy", "help": "Policy name"}])
 
-    actions["generate-rules"] = create_sub_command(
-        subparsers, "generate-rules",
-        "Generate the policy version rules json and output to "
-        "rules folder. (Optionally, use -outputfile to specify "
+    actions["download"] = create_sub_command(
+        subparsers, "download",
+        "Download the policy version rules json and output to "
+        "rules folder. (Optionally, use --output-file to specify "
         "location of outputfile)",
         [{"name": "output-file",
           "help": "Output filename to store the rules"}],
@@ -469,7 +469,7 @@ def show(args):
             exit(1)
 
 
-def generate_rules_json(args):
+def download(args):
     base_url, session = init_config(args.edgerc, args.section)
 
     policy = args.policy
@@ -607,7 +607,7 @@ def create_version(args):
                         new_policy_file) +
                     ' is not found. This file is the default source for uploading rules.\n')
                 root_logger.info(
-                    'You may want to use "generate-rules <policyname>" first\n')
+                    'You may want to use "download <policyname>" first\n')
         else:
             root_logger.info(
                 '\nLocal datastore does not have this policy. Please double check policy name or run "setup" first')
