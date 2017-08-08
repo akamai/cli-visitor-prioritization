@@ -293,7 +293,7 @@ def setup(args):
                              ' groups, groupId and name is: ' + str(group_id) + ': ' + group_name)
             counter += 1
             cloudlet_policies = cloudlet_object.list_policies(
-                session=session, groupId=group_id, cloudletCode='VP')
+                session=session, group_id=group_id, cloudlet_code='VP')
             if cloudlet_policies.status_code == 200:
                 for every_policy in cloudlet_policies.json():
                     policy_name = every_policy['name'] + '.json'
@@ -320,8 +320,8 @@ def setup(args):
             '\nFound these policies below and stored in ' +
             policy_path +
             " folder:")
-        for everyPolicyName in policies_list:
-            print(everyPolicyName)
+        for every_policy_name in policies_list:
+            print(every_policy_name)
 
     return 0
 
@@ -437,7 +437,7 @@ def show(args):
 
                 if not from_version:
                     policy_versions = cloudlet_object.list_policy_versions(
-                        session, policy_policy_id, pageSize='10')
+                        session, policy_policy_id, page_size='10')
                     root_logger.info(
                         '\nFetching last 10 policy version details... You can pass -fromVersion to list more versions.')
                 else:
@@ -448,16 +448,16 @@ def show(args):
                         str(from_version))
                 root_logger.info('\nVersion Details (Version : Description)')
                 root_logger.info('------------------------------------------')
-                for everyVersion in policy_versions.json():
+                for every_version in policy_versions.json():
                     if from_version:
-                        if int(everyVersion['version']) >= int(from_version):
+                        if int(every_version['version']) >= int(from_version):
                             root_logger.info(
-                                str(everyVersion['version']) + ' : ' +
-                                str(everyVersion['description']))
+                                str(every_version['version']) + ' : ' +
+                                str(every_version['description']))
                     else:
                         root_logger.info(
-                            str(everyVersion['version']) + ' : ' +
-                            str(everyVersion['description']))
+                            str(every_version['version']) + ' : ' +
+                            str(every_version['description']))
 
                 root_logger.info(
                     '\nNOTE: You can pass -version <version_number> as an additional argument to get version specific '
@@ -579,7 +579,7 @@ def create_version(args):
                     policy_details = json.load(policy_data)
                     policy_details_json = json.dumps(policy_details)
                 policy_create_response = cloudlet_object.create_policy_version(
-                    session, policyId=policy_policy_id)
+                    session, policy_id=policy_policy_id)
                 root_logger.info(
                     'Trying to create a new version of this policy...')
                 if policy_create_response.status_code == 200 or 201:
@@ -756,7 +756,6 @@ def throttle(args):
                 ' network. Using this version...')
             policy_details = cloudlet_object.get_cloudlet_policy(
                 session, policy_policy_id, version=version)
-            # rootLogger.info(json.dumps(policyDetails.json(), indent = 4))
 
             # Filter the details of policy
             rule_found = 0
@@ -771,25 +770,25 @@ def throttle(args):
                     exit(1)
                 if every_detail_of_policy['matchRules'] is not None:
                     match_rules_section = every_detail_of_policy['matchRules']
-                    for everyMatchRule in match_rules_section:
+                    for every_match_rule in match_rules_section:
                         # Delete the location tag, as it causes error while
                         # uploading
-                        if 'location' in everyMatchRule:
-                            del everyMatchRule['location']
+                        if 'location' in every_match_rule:
+                            del every_match_rule['location']
                         # Match the rule name (case insensitive)
-                        if everyMatchRule['name'].lower() == rule.lower():
+                        if every_match_rule['name'].lower() == rule.lower():
                             # Update the throttle value now
                             rule_found = 1
                             rule_count = rule_count + 1
                             if not disable:
-                                everyMatchRule['passThroughPercent'] = int(
-                                    throttle)
+                                every_match_rule['passThroughPercent'] = int(
+                                    percent)
                                 # Check whether rules is disabled, if yes
                                 # enable it by deleting the disable entry
-                                if 'disabled' in everyMatchRule and everyMatchRule['disabled'] is True:
-                                    del everyMatchRule['disabled']
+                                if 'disabled' in every_match_rule and every_match_rule['disabled'] is True:
+                                    del every_match_rule['disabled']
                             if disable == 'disabled':
-                                everyMatchRule['disabled'] = True
+                                every_match_rule['disabled'] = True
 
                     policy_details_to_modify['matchRules'] = every_detail_of_policy['matchRules']
                     policy_details_to_modify['description'] = 'Created from v' + str(
@@ -861,9 +860,9 @@ def list(args=None):
     root_logger.info('\n\nAvailable policies are: ')
     root_logger.info('--------------------------\n')
     for root, dirs, files in os.walk(policies_folder):
-        for everyFile in files:
-            if everyFile.endswith('json'):
-                file_name = everyFile.split('.')
+        for every_file in files:
+            if every_file.endswith('json'):
+                file_name = every_file.split('.')
                 root_logger.info(str(counter) + '. ' + file_name[0])
                 counter += 1
     root_logger.info('\n--------------------------\n')
