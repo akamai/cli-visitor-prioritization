@@ -165,7 +165,7 @@ def cli():
 
     actions["throttle"] = create_sub_command(
         subparsers, "throttle", "Throttle traffic by rule name",
-        [{"name": "throttle", "help": "Throttle value (-1 to 100)"},
+        [{"name": "percent", "help": "Throttle percentage (-1 to 100)"},
          {"name": "disable", "help": "Disable all throttling",
           "action": "store_true"},
          {"name": "network",
@@ -670,16 +670,16 @@ def throttle(args):
     policy = args.policy
     network = args.network
     rule = args.rule
-    throttle = args.throttle.lower()
+    percent = args.percent.lower()
     disable = args.disable
     force = args.force
 
-    if not disable and not throttle:
-        print("One of --throttle or --disable must be specified")
+    if not disable and not percent:
+        print("One of --percent or --disable must be specified")
         return 1
 
-    if -1 <= int(throttle) <= 100:
-        print("Invalid --throttle value, please specify a value between -1 and 100")
+    if -1 <= int(percent) <= 100:
+        print("Invalid --percent value, please specify a value between -1 and 100")
         return 1
 
     if not force:
@@ -688,7 +688,7 @@ def throttle(args):
                 'You are about to throttle ' +
                 rule +
                 ' at value = ' +
-                str(throttle) +
+                str(percent) +
                 ' for ' +
                 policy +
                 ' on the Akamai ' +
@@ -794,7 +794,7 @@ def throttle(args):
                     policy_details_to_modify['matchRules'] = every_detail_of_policy['matchRules']
                     policy_details_to_modify['description'] = 'Created from v' + str(
                         version) + ': Throttle Rule = ' + rule + ' to value = ' + str(
-                        throttle) + ' (Akamai CLI for Visitor Prioritization)'
+                        percent) + ' (Akamai CLI for Visitor Prioritization)'
                     if rule_found == 0:
                         root_logger.info(
                             'Rule: ' + rule + ' is not found. Exiting...')
