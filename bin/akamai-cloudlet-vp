@@ -682,7 +682,7 @@ def throttle(args):
         print("Invalid --percent value, please specify a value between -1 and 100")
         return 1
 
-    if not force:
+    if not force and network == "production":
         if not disable:
             root_logger.info(
                 'You are about to throttle ' +
