@@ -678,7 +678,7 @@ def throttle(args):
         print("One of --percent or --disable must be specified")
         return 1
 
-    if -1 <= int(percent) <= 100:
+    if int(percent) < -1 or int(percent) > 100:
         print("Invalid --percent value, please specify a value between -1 and 100")
         return 1
 
