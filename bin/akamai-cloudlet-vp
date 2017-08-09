@@ -439,7 +439,7 @@ def show(args):
                     policy_versions = cloudlet_object.list_policy_versions(
                         session, policy_policy_id, page_size='10')
                     root_logger.info(
-                        '\nFetching last 10 policy version details... You can pass -fromVersion to list more versions.')
+                        '\nFetching last 10 policy version details... You can pass --from-version to list more versions.')
                 else:
                     policy_versions = cloudlet_object.list_policy_versions(
                         session, policy_policy_id)
@@ -460,12 +460,12 @@ def show(args):
                             str(every_version['description']))
 
                 root_logger.info(
-                    '\nNOTE: You can pass -version <version_number> as an additional argument to get version specific '
+                    '\nNOTE: You can pass --version <version_number> as an additional argument to get version specific '
                     'details\n')
 
         else:
             root_logger.info(
-                '\nLocal datastore does not have this policy. Please double check policy name or run -setup first')
+                '\nLocal datastore does not have this policy. Please double check policy name or run "setup" first')
             exit(1)
 
 
@@ -526,7 +526,7 @@ def download(args):
                 return 1
         else:
             root_logger.info(
-                '\nLocal datastore does not have this policy. Please double check policy name or run -setup first')
+                '\nLocal datastore does not have this policy. Please double check policy name or run "setup" first')
             return 1
 
     return 0
@@ -569,7 +569,7 @@ def create_version(args):
                 rules_file = os.path.join(new_policy_folder, custom_file)
             else:
                 root_logger.info(
-                    '\n-file option was not specified. Picking rules file from: ' +
+                    '\n--file option was not specified. Picking rules file from: ' +
                     os.path.join(
                         new_policy_folder,
                         new_policy_file))
@@ -847,7 +847,7 @@ def throttle(args):
                 return 1
         else:
             root_logger.info(
-                '\nLocal datastore does not have this policy. Please double check policy name or run -setup first')
+                '\nLocal datastore does not have this policy. Please double check policy name or run "setup" first')
             return 1
 
     return 0
