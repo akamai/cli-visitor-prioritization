@@ -116,11 +116,11 @@ class Cloudlet(object):
         policies_response = None
         if cloudlet_code == 'optional':
             policies_url = 'https://' + self.access_hostname + \
-                           '/cloudlets/api/v2/policies?gid=' + str(group_id) + '&cloudlet_id=' + str(cloudlet_id)
+                           '/cloudlets/api/v2/policies?gid=' + str(group_id) + '&cloudletId=' + str(cloudlet_id)
             policies_response = session.get(policies_url)
         elif cloudlet_code == 'VP':
             policies_url = 'https://' + self.access_hostname + \
-                           '/cloudlets/api/v2/policies?gid=' + str(group_id) + '&cloudlet_id=' + str(1)
+                           '/cloudlets/api/v2/policies?gid=' + str(group_id) + '&cloudletId=' + str(1)
             policies_response = session.get(policies_url)
         return policies_response
 
