@@ -318,7 +318,7 @@ def setup(args):
             policy_path +
             " folder:")
         for every_policy_name in policies_list:
-            print(every_policy_name)
+            root_logger.info(every_policy_name)
 
     return 0
 
@@ -366,13 +366,13 @@ def show(args):
                                         status = 'DISABLED'
                                     else:
                                         status = 'ACTIVE'
-                                    print('   ' +
+                                    root_logger.info('   ' +
                                           every_match_rule['name'] +
                                           ' -> ' +
                                           str(every_match_rule['passThroughPercent']) +
                                           ' -> ' +
                                           status)
-                                print(
+                                root_logger.info(
                                     '\nNOTE: You can pass --verbose as an additional argument to get detailed rule '
                                     'information')
                             if verbose:
@@ -673,15 +673,22 @@ def throttle(args):
         root_logger.info("One of --percent or --disable must be specified")
         return 1
 
+    if disable and percent:
+        root_logger.info("One of --percent or --disable must be specified, not both")
+        return 1
+
     if not network:
         root_logger.info("--network must be specified")
+        return 1
 
     if not rule:
         root_logger.info("--rule must be specified")
-
-    if int(percent) < -1 or int(percent) > 100:
-        root_logger.info("Invalid --percent value, please specify a value between -1 and 100")
         return 1
+
+    if percent:
+        if int(percent) < -1 or int(percent) > 100:
+            root_logger.info("Invalid --percent value, please specify a value between -1 and 100")
+            return 1
 
     if not force and network == "production":
         if not disable:
