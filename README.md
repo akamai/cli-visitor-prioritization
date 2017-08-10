@@ -21,45 +21,45 @@ The initial version of the cloudlet-visitor-prioritization provides the followin
 
 ## cli-cloudlet-visitor-prioritization
 Main program that wraps this functionality in a command line utility:
-* [Setup](#setup)
-* [List Policies](#listpolicies)
-* [Get Policy Detail](#getdetail)
+* [setup](#setup)
+* [list](#list)
+* [show](#show)
 * [Throttle](#throttle)
 * [Activate](#activate)
 * [Download Policy Rules Json](#generaterulesjson)
 * [Create Version](#createversion)
 
-### Setup
+### setup
 Does a one time download of Visitor Prioritization Cloudlet policyIds and groupIds and stores them in /setup folder for faster local retrieval. This command can be run anytime and will refresh the /setup folder based on the current list of policies. 
 
 ```bash
-%  akamai-cloudlet-vp -setup
+%  akamai-visitor-prioritization setup
 ```
 
-### listPolicies
+### list
 List current Visitor Prioritization Cloudlet policy names  
 
 ```bash
-%  akamai-cloudlet-vp -listPolicies
+%  akamai-visitor-prioritization list
 ```
 
-### getDetail
+### show
 Get specific details for a policy name. Available information include configurations that reference that policy, current version numbers on Akamai staging and production, version history, and current rule settings.
 
 ```bash
-%  akamai-cloudlet-vp -getDetail -policyName samplePolicyName
-%  akamai-cloudlet-vp -getDetail -policyName samplePolicyName -fromVersion 37
-%  akamai-cloudlet-vp -getDetail -policyName samplePolicyName -version 66
-%  akamai-cloudlet-vp -getDetail -policyName samplePolicyName -version 66 -verbose
+%  akamai-visitor-prioritization show --policy samplePolicyName
+%  akamai-visitor-prioritization show --policy samplePolicyName --from-version 37
+%  akamai-visitor-prioritization show --policy samplePolicyName --version 66
+%  akamai-visitor-prioritization show --policy samplePolicyName --version 66 --verbose
 ```
 
 The flags of interest for create are:
 
 ```
--policyName <policyName>    Specified Visitor Prioritization Cloudlet policy name
--version <version>          Specific version number for that policy name (optional)
--fromVersion <fromVersion>  If -version is not specified, list policy version details starting from -fromVersion value (optional)
--verbose                    If -version is specified, add -verbose to get full rule details including url paths and match criteria (optional)
+--policy <policyName>        Specified Visitor Prioritization Cloudlet policy name
+--version <version>          Specific version number for that policy name (optional)
+--fromVersion <fromVersion>  If --version is not specified, list policy version details starting from --from-version value (optional)
+--verbose                    If --version is specified, add --verbose to get full rule details including url paths and match criteria (optional)
 
 ```
 
