@@ -485,10 +485,11 @@ def download(args):
                 session, policy_policy_id, version=version)
             if policy_details.status_code == 200:
                 # Update the local copy to latest details
+                new_policy_folder = 'rules'
                 if output_file:
-                    output_filename = output_file
+                    output_filename = os.path.join(
+                        new_policy_folder, output_file)
                 else:
-                    new_policy_folder = 'rules'
                     if not os.path.exists(new_policy_folder):
                         os.makedirs(new_policy_folder)
                     new_policy_file = policy + '_rules.json'
