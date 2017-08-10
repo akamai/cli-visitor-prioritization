@@ -35,7 +35,7 @@ PACKAGE_VERSION = "0.1.0"
 # Setup logging
 if not os.path.exists('logs'):
     os.makedirs('logs')
-log_file = os.path.join('logs', 'cloudlet-vp_log.log')
+log_file = os.path.join('logs', 'visitor-prioritization.log')
 
 # Set the format of logging in console and file separately
 log_formatter = logging.Formatter(
@@ -890,7 +890,7 @@ def confirm_setup(args):
 def get_prog_name():
     prog = os.path.basename(sys.argv[0])
     if os.getenv("AKAMAI_CLI"):
-        prog = "akamai cloudlet-vp"
+        prog = "akamai visitor-prioritization"
     return prog
 
 
