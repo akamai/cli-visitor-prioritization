@@ -69,8 +69,8 @@ Make an actual change to percentage value for a specific rule name in the policy
 ```bash
 %  akamai-visitor-prioritization throttle --percent 50 --policyName samplePolicyName --rule 'ruleName' --network staging
 %  akamai-visitor-prioritization throttle --percent -1 --policyName samplePolicyName --rule 'ruleName' --network staging
-%  akamai-visitor-prioritization throttle --disable --policy samplePolicyName --rule 'ruleName' --network prod
-%  akamai-visitor-prioritization throttle --disable --policy samplePolicyName --rule 'ruleName' --network prod --force
+%  akamai-visitor-prioritization throttle --disable --policy samplePolicyName --rule 'ruleName' --network production
+%  akamai-visitor-prioritization throttle --disable --policy samplePolicyName --rule 'ruleName' --network production --force
 %  akamai-visitor-prioritization throttle --disable --policy samplePolicyName --rule 'ruleName' --network staging
 ```
 
@@ -90,7 +90,7 @@ Activate a specified version for a policy to the appropriate network (staging or
 
 ```bash
 %  akamai-visitor-prioritization activate --policy samplePolicyName --version 87 --network staging
-%  akamai-visitor-prioritization activate --policy samplePolicyName --version 71 --network prod
+%  akamai-visitor-prioritization activate --policy samplePolicyName --version 71 --network production
 ```
 
 The flags of interest for create are:
