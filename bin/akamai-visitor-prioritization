@@ -670,11 +670,17 @@ def throttle(args):
     force = args.force
 
     if not disable and not percent:
-        print("One of --percent or --disable must be specified")
+        root_logger.info("One of --percent or --disable must be specified")
         return 1
 
+    if not network:
+        root_logger.info("--network must be specified")
+
+    if not rule:
+        root_logger.info("--rule must be specified")
+
     if int(percent) < -1 or int(percent) > 100:
-        print("Invalid --percent value, please specify a value between -1 and 100")
+        root_logger.info("Invalid --percent value, please specify a value between -1 and 100")
         return 1
 
     if not force and network == "production":
@@ -701,6 +707,7 @@ def throttle(args):
 
         if str.lower(input()) != 'y':
             root_logger.info('Exiting...')
+            exit(1)
 
     if network == 'production':
         network = 'prod'
