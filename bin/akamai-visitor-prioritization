@@ -312,10 +312,7 @@ def setup(args):
                             every_policy['name'])
                         pass
             else:
-                root_logger.debug(
-                    'groupId: ' +
-                    str(group_id) +
-                    ' has no policy details')
+                root_logger.debug('groupId: ' + str(group_id) + ' has no policy details')
         root_logger.info(
             '\nFound these policies below and stored in ' +
             policy_path +
@@ -410,11 +407,9 @@ def show(args):
                                     root_logger.info(
                                         '\n       ----------------------------------------------       \n')
                         else:
-                            root_logger.info(
-                                '\nThere are no match criteria for this rule\n')
+                            root_logger.info('\nThere are no match criteria for this rule\n')
                 else:
-                    root_logger.info(
-                        'Requested policy version does not exist - please check version number')
+                    root_logger.info('Requested policy version does not exist - please check version number')
             else:
                 policy_details = cloudlet_object.get_cloudlet_policy(
                     session, policy_policy_id)
