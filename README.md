@@ -1,4 +1,4 @@
-# cli-cloudlet-visitor-prioritization
+# cli-visitor-prioritization
 Provides a way to interact real-time with your Visitor Prioritization Cloudlet via Open APIs and without manually having to go into the Luna Portal. Provides various functionality such as viewing current policies, current status, rule details, and the ability to invoke actual percentage changes.
 
 ## Local Install
