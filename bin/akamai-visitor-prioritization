@@ -376,7 +376,7 @@ def show(args):
                                           ' -> ' +
                                           status)
                                 print(
-                                    '\nNOTE: You can pass -verbose as an additional argument to get detailed rule '
+                                    '\nNOTE: You can pass --verbose as an additional argument to get detailed rule '
                                     'information')
                             if verbose:
                                 root_logger.info(
@@ -670,7 +670,7 @@ def throttle(args):
     policy = args.policy
     network = args.network
     rule = args.rule
-    percent = args.percent.lower()
+    percent = args.percent
     disable = args.disable
     force = args.force
 
@@ -781,19 +781,19 @@ def throttle(args):
                             rule_found = 1
                             rule_count = rule_count + 1
                             if not disable:
-                                every_match_rule['passThroughPercent'] = int(
-                                    percent)
+                                every_match_rule['passThroughPercent'] = int(percent)
                                 # Check whether rules is disabled, if yes
                                 # enable it by deleting the disable entry
                                 if 'disabled' in every_match_rule and every_match_rule['disabled'] is True:
                                     del every_match_rule['disabled']
-                            if disable == 'disabled':
+                            else:
                                 every_match_rule['disabled'] = True
 
                     policy_details_to_modify['matchRules'] = every_detail_of_policy['matchRules']
-                    policy_details_to_modify['description'] = 'Created from v' + str(
-                        version) + ': Throttle Rule = ' + rule + ' to value = ' + str(
-                        percent) + ' (Akamai CLI for Visitor Prioritization)'
+                    policy_details_to_modify['description'] = 'Created from v' + str(version) + \
+                                                              ': Throttle Rule = ' + rule + ' to value = ' \
+                                                              + str(percent) if not disable else "disabled" + \
+                                                              ' (Akamai CLI for Visitor Prioritization)'
                     if rule_found == 0:
                         root_logger.info(
                             'Rule: ' + rule + ' is not found. Exiting...')
@@ -809,7 +809,7 @@ def throttle(args):
 
             # Let us now create a new version and update the rules
             policy_create_response = cloudlet_object.create_policy_version(
-                session, policyId=policy_policy_id)
+                session, policy_id=policy_policy_id)
             root_logger.info(
                 '\nTrying to create a new version of this policy with updated rule throttle.')
             if policy_create_response.status_code == 200 or 201:
