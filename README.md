@@ -24,10 +24,10 @@ Main program that wraps this functionality in a command line utility:
 * [setup](#setup)
 * [list](#list)
 * [show](#show)
-* [Throttle](#throttle)
-* [Activate](#activate)
-* [Download Policy Rules Json](#generaterulesjson)
-* [Create Version](#createversion)
+* [throttle](#throttle)
+* [activate](#activate)
+* [download](#download)
+* [create-version](#create-version)
 
 ### setup
 Does a one time download of Visitor Prioritization Cloudlet policyIds and groupIds and stores them in /setup folder for faster local retrieval. This command can be run anytime and will refresh the /setup folder based on the current list of policies. 
@@ -58,78 +58,80 @@ The flags of interest for create are:
 ```
 --policy <policyName>        Specified Visitor Prioritization Cloudlet policy name
 --version <version>          Specific version number for that policy name (optional)
---fromVersion <fromVersion>  If --version is not specified, list policy version details starting from --from-version value (optional)
+--from-version <fromVersion> If --version is not specified, list policy version details starting from --from-version value (optional)
 --verbose                    If --version is specified, add --verbose to get full rule details including url paths and match criteria (optional)
 
 ```
 
-### Throttle
+### throttle
 Make an actual change to percentage value for a specific rule name in the policy.
 
 ```bash
-%  akamai-cloudlet-vp -throttle 50 -policyName samplePolicyName -rule 'ruleName' -network staging
-%  akamai-cloudlet-vp -throttle -1 -policyName samplePolicyName -rule 'ruleName' -network staging
-%  akamai-cloudlet-vp -throttle disabled -policyName samplePolicyName -rule 'ruleName' -network prod
-%  akamai-cloudlet-vp -throttle disabled -policyName samplePolicyName -rule 'ruleName' -network staging -ignorePrompt
+%  akamai-visitor-prioritization throttle --percent 50 --policyName samplePolicyName --rule 'ruleName' --network staging
+%  akamai-visitor-prioritization throttle --percent -1 --policyName samplePolicyName --rule 'ruleName' --network staging
+%  akamai-visitor-prioritization throttle --disable --policy samplePolicyName --rule 'ruleName' --network prod
+%  akamai-visitor-prioritization throttle --disable --policy samplePolicyName --rule 'ruleName' --network prod --force
+%  akamai-visitor-prioritization throttle --disable --policy samplePolicyName --rule 'ruleName' --network staging
 ```
 
 The flags of interest for create are:
 
 ```
--throttle <value>          Acceptable values are -1 (= All to Waiting Room), 0 <= 100, or 'disabled' (to disable rule)
--policyName <policyName>   Specified Visitor Prioritization Cloudlet policy name
--ruleName <ruleName>       Name of rule in policy that should be changed. Use single quotes ('') in case rule name has spaces. If multiple rules exist for the same name, all of them will be updated.
--network <network>         Either staging, prod, or production ; will make change based on latest version on that network
--ignorePrompt              Use this flag if you want to proceed without confirmation
+--percent <value>       Acceptable values are -1 (= All to Waiting Room), 0 <= 100 (100 = everyone allowed)
+--disable               If specifed instead of --percent, disables the rule in the policy
+--policy <policyName>   Specified Visitor Prioritization Cloudlet policy name
+--rule <ruleName>       Name of rule in policy that should be changed. Use single quotes ('') in case rule name has spaces. If multiple rules exist for the same name, all of them will be updated.
+--network <network>     Either staging or production ; will make change based on latest version on that network
+--force                 Use this flag if you want to proceed without confirmation (only for --network production)
 ```
 
-### Activate
+### activate
 Activate a specified version for a policy to the appropriate network (staging or production)
 
 ```bash
-%  akamai-cloudlet-vp -activate -policyName samplePolicyName -version 87 -network staging
-%  akamai-cloudlet-vp -activate -policyName samplePolicyName -version 71 -network prod
+%  akamai-visitor-prioritization activate --policy samplePolicyName --version 87 --network staging
+%  akamai-visitor-prioritization activate --policy samplePolicyName --version 71 --network prod
 ```
 
 The flags of interest for create are:
 
 ```
--policyName <policyName>  Specified Visitor Prioritization Cloudlet policy name
--version <version>        Specific version number for that policy name
--network <network>        Either staging, prod, or production ; will make change based on latest version on that network
+--policy <policyName>   Specified Visitor Prioritization Cloudlet policy name
+--version <version>     Specific version number for that policy name
+--network <network>     Either staging or production
 
 ```
 
-### GenerateRulesJson
+### download
 Download the raw policy rules for a specified version in json format for local editing if desired.
 
 ```bash
-%  akamai-cloudlet-vp -generateRulesJson -policyName samplePolicyName -version 87
-%  akamai-cloudlet-vp -generateRulesJson -policyName samplePolicyName -version 71 -outputfile savefilename.json
+%  akamai-visitor-prioritization download --policy samplePolicyName --version 87
+%  akamai-visitor-prioritization download --policy samplePolicyName --version 71 --output-file savefilename.json
 ```
 
 The flags of interest for create are:
 
 ```
--policyName <policyName>  Specified Visitor Prioritization Cloudlet policy name
--version <version>        Specific version number for that policy name
--outputfile <filename>    Filename to be saved as in /rules folder (optional) 
+--policy <policyName>     Specified Visitor Prioritization Cloudlet policy name
+--version <version>       Specific version number for that policy name
+--output-file <filename>  Filename to be saved in /rules folder (optional) 
 
 ```
 
-### createVersion
-Download the raw policy rules for a specified version in json format for local editing if desired.
+### create-version
+Create a new policy version from a raw json file
 
 ```bash
-%  akamai-cloudlet-vp -createVersion -policyName samplePolicyName
-%  akamai-cloudlet-vp -createVersion -policyName samplePolicyName -file filename.json
-%  akamai-cloudlet-vp -createVersion -policyName samplePolicyName -file filename.json -ignorePrompt 
+%  akamai-visitor-prioritization create-version --policy samplePolicyName
+%  akamai-visitor-prioritization create-version --policy samplePolicyName --file filename.json
+%  akamai-visitor-prioritization create-version --policy samplePolicyName --file filename.json --force
 ```
 
 The flags of interest for create are:
 
 ```
--policyName <policyName>  Specified Visitor Prioritization Cloudlet policy name
--file <file>	          Filename of raw .json file to be used as policy details. This file should be in the /rules folder (optional)
--ignorePrompt             Use this flag if you want to proceed without confirmation
+--policy <policyName>  Specified Visitor Prioritization Cloudlet policy name
+--file <file>	         Filename of raw .json file to be used as policy details. This file should be in the /rules folder (optional)
+--force                Use this flag if you want to proceed without confirmation if description field in json has not been updated
 ```
