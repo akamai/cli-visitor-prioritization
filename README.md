@@ -53,7 +53,7 @@ Get specific details for a policy name. Available information include configurat
 %  akamai-visitor-prioritization show --policy samplePolicyName --version 66 --verbose
 ```
 
-The flags of interest for create are:
+The flags of interest for show are:
 
 ```
 --policy <policyName>        Specified Visitor Prioritization Cloudlet policy name
@@ -74,7 +74,7 @@ Make an actual change to percentage value for a specific rule name in the policy
 %  akamai-visitor-prioritization throttle --disable --policy samplePolicyName --rule 'ruleName' --network staging
 ```
 
-The flags of interest for create are:
+The flags of interest for throttle are:
 
 ```
 --percent <value>       Acceptable values are -1 (= All to Waiting Room), 0 <= 100 (100 = everyone allowed)
@@ -93,7 +93,7 @@ Activate a specified version for a policy to the appropriate network (staging or
 %  akamai-visitor-prioritization activate --policy samplePolicyName --version 71 --network production
 ```
 
-The flags of interest for create are:
+The flags of interest for activate are:
 
 ```
 --policy <policyName>   Specified Visitor Prioritization Cloudlet policy name
@@ -110,7 +110,7 @@ Download the raw policy rules for a specified version in json format for local e
 %  akamai-visitor-prioritization download --policy samplePolicyName --version 71 --output-file savefilename.json
 ```
 
-The flags of interest for create are:
+The flags of interest for download are:
 
 ```
 --policy <policyName>     Specified Visitor Prioritization Cloudlet policy name
@@ -128,7 +128,7 @@ Create a new policy version from a raw json file
 %  akamai-visitor-prioritization create-version --policy samplePolicyName --file filename.json --force
 ```
 
-The flags of interest for create are:
+The flags of interest for create-version are:
 
 ```
 --policy <policyName>  Specified Visitor Prioritization Cloudlet policy name
