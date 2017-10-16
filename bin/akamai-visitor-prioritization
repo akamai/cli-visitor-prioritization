@@ -487,6 +487,8 @@ def download(args):
                 # Update the local copy to latest details
                 new_policy_folder = 'rules'
                 if output_file:
+                   if not os.path.exists(new_policy_folder):
+                        os.makedirs(new_policy_folder)
                     output_filename = os.path.join(
                         new_policy_folder, output_file)
                 else:
