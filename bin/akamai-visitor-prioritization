@@ -319,6 +319,9 @@ def setup(args):
             " folder:")
         for every_policy_name in policies_list:
             root_logger.info(every_policy_name)
+    else:
+        root_logger.info('Unable to fetch group details')
+        root_logger.info(json.dumps(group_response.json(), indent=4))
 
     return 0
 
@@ -344,7 +347,7 @@ def show(args):
             if version:
                 policy_detail = cloudlet_object.get_cloudlet_policy(
                     session, policy_policy_id, version=args.version)
-                root_logger.debug(json.dumps(policy_detail.json()))
+                root_logger.debug(json.dumps(policy_detail.json(), indent=4))
                 every_version_detail = policy_detail.json()
                 if policy_detail.status_code == 200:
                     if not every_version_detail['deleted']:
@@ -393,8 +396,13 @@ def show(args):
                                             root_logger.info('       AND')
                                         root_logger.info(
                                             '       Match Type: ' + every_match_condition['matchType'])
-                                        root_logger.info(
-                                            '       Match Value: ' + every_match_condition['matchValue'])
+                                        if 'matchValue' in every_match_condition:
+                                            root_logger.info(
+                                                '       Match Value: ' + every_match_condition['matchValue'])
+                                        elif 'objectMatchValue' in every_match_condition:
+                                            root_logger.info(
+                                                '       Match Value: ' + str(every_match_condition['objectMatchValue']['value']))
+
                                         multiple_matches = 1
                                     # Check wthether rules is disabled, if yes
                                     # display accordingly
@@ -487,10 +495,10 @@ def download(args):
                 # Update the local copy to latest details
                 new_policy_folder = 'rules'
                 if output_file:
-                   if not os.path.exists(new_policy_folder):
-                        os.makedirs(new_policy_folder)
-                    output_filename = os.path.join(
-                        new_policy_folder, output_file)
+                  if not os.path.exists(new_policy_folder):
+                    os.makedirs(new_policy_folder)
+                  output_filename = os.path.join(
+                      new_policy_folder, output_file)
                 else:
                     if not os.path.exists(new_policy_folder):
                         os.makedirs(new_policy_folder)
