@@ -163,25 +163,10 @@ def cli():
           "type": str.lower, "choices": {"staging", "production"}},
          {"name": "version", "help": "Version number of the policy"}])
 
-    actions["throttle"] = create_sub_command(
-        subparsers, "throttle", "Throttle traffic by rule name",
-        [{"name": "percent", "help": "Throttle percentage (-1 to 100)"},
-         {"name": "network",
-          "help": "Network to be activated on (case-insensitive).",
-          "type": str.lower, "choices": {"staging", "production"}},
-         {"name": "rule",
-          "help":
-              "Rule name to update (use 'single quotes' to honor "
-              "spaces in rule name))"},
-         {"name": "force", "help": "Do not prompt for user confirmation",
-          "action": "store_true"},
-         {"name": "allrules", "help": "Apply action on all rules",
-          "action": "store_true"}],
-        [{"name": "policy", "help": "Policy name"}])
 
     actions["allow"] = create_sub_command(
-        subparsers, "allow", "Percentage of Traffic to be allowed to Origin. Same as throttle",
-        [{"name": "percent", "help": "Throttle percentage (-1 to 100)"},
+        subparsers, "allow", "Percentage of Traffic to be allowed to Origin.",
+        [{"name": "percent", "help": "Allow traffic percentage (-1 to 100)"},
          {"name": "network",
           "help": "Network to be activated on (case-insensitive).",
           "type": str.lower, "choices": {"staging", "production"}},
@@ -709,7 +694,7 @@ def activate(args):
     return 0
 
 
-def throttle(args):
+def allow(args):
     base_url, session = init_config(args.edgerc, args.section)
 
     command = sys.argv[1]
@@ -747,7 +732,7 @@ def throttle(args):
 
     if not force and network == "production":
         root_logger.info(
-            'You are about to throttle ' +
+            'You are about to allow traffic for ' +
             rule +
             ' at value = ' +
             str(percent) +
@@ -836,7 +821,7 @@ def throttle(args):
                             del every_match_rule['location']
                         # Match the rule name (case insensitive)
                         if rule and every_match_rule['name'].lower() == rule.lower() or args.allrules:
-                            # Update the throttle value now
+                            # Update the allow traffic percentage value now
                             rule_found = 1
                             rule_count = rule_count + 1
                             if not command == 'disable':
@@ -891,7 +876,7 @@ def throttle(args):
                 '\nTrying to create a new version of this policy with updated rule(s).')
             if policy_create_response.status_code == 200 or 201:
                 new_version = policy_create_response.json()['version']
-                # Let us now update the rules with new throttle values
+                # Let us now update the rules with new percentage values
                 policy_update_response = cloudlet_object.update_policy_version(
                     session, policy_policy_id, json.dumps(policy_details_to_modify), new_version)
                 if policy_update_response.status_code == 200:
@@ -930,12 +915,8 @@ def throttle(args):
     return 0
 
 
-def allow(args):
-    throttle(args)
-
-
 def disable(args):
-    throttle(args)
+    allow(args)
 
 
 def list(args=None):
