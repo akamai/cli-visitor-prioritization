@@ -409,24 +409,26 @@ def show(args):
                                     # Loop each match conditon within each rule
                                     for every_match_condition in every_match_rule['matches']:
                                         if multiple_matches == 1:
-                                            root_logger.info('       AND')
+                                            root_logger.info('\n       AND\n')
                                         root_logger.info(
                                             '       Match Type: ' + every_match_condition['matchType'])
+                                        if every_match_condition['negate'] is False:
+                                            root_logger.info(
+                                                '       Match Operator: ' + every_match_condition['matchOperator'])
+                                        else:
+                                            root_logger.info(
+                                                '       Match Operator: NOT ' + every_match_condition['matchOperator'])
+
                                         if 'matchValue' in every_match_condition:
-                                            if every_match_condition['negate'] is False:
                                                 root_logger.info(
                                                     '       Match Value: ' + every_match_condition['matchValue'])
-                                            else:
-                                                root_logger.info(
-                                                    '       Match Value is NOT: ' + every_match_condition['matchValue'])
                                         elif 'objectMatchValue' in every_match_condition:
-                                            if every_match_condition['negate'] is False:
-                                                root_logger.info(
-                                                    '       Match Value: ' + str(every_match_condition['objectMatchValue']['value']))
-                                            else:
-                                                root_logger.info(
-                                                    '       Match Value is NOT: ' + str(every_match_condition['objectMatchValue']['value']))
-
+                                                if 'name' in every_match_condition['objectMatchValue']:
+                                                    root_logger.info(
+                                                        '       Match Value: ' + str(every_match_condition['objectMatchValue']['name']))
+                                                elif 'value' in every_match_condition['objectMatchValue']:
+                                                    root_logger.info(
+                                                        '       Match Value: ' + str(every_match_condition['objectMatchValue']['value']))
                                         multiple_matches = 1
                                     # Check wthether rules is disabled, if yes
                                     # display accordingly
