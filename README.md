@@ -31,7 +31,8 @@ Main program that wraps this functionality in a command line utility:
 * [setup](#setup)
 * [list](#list)
 * [show](#show)
-* [throttle](#throttle)
+* [allow](#allow)
+* [disable](#disable)
 * [activate](#activate)
 * [download](#download)
 * [create-version](#create-version)
@@ -70,25 +71,42 @@ The flags of interest for show are:
 
 ```
 
-### throttle
+### allow
 Make an actual change to percentage value for a specific rule name in the policy.
 
 ```bash
-%  akamai-visitor-prioritization throttle --percent 50 --policyName samplePolicyName --rule 'ruleName' --network staging
-%  akamai-visitor-prioritization throttle --percent -1 --policyName samplePolicyName --rule 'ruleName' --network staging
-%  akamai-visitor-prioritization throttle --disable --policy samplePolicyName --rule 'ruleName' --network production
-%  akamai-visitor-prioritization throttle --disable --policy samplePolicyName --rule 'ruleName' --network production --force
-%  akamai-visitor-prioritization throttle --disable --policy samplePolicyName --rule 'ruleName' --network staging
+%  akamai-visitor-prioritization allow --percent 50 --policy samplePolicyName --rule 'ruleName' --network production
+%  akamai-visitor-prioritization allow --percent -1 --policy samplePolicyName --rule 'ruleName' --network staging
+%  akamai-visitor-prioritization allow --percent 100 --policy samplePolicyName --rule 'ruleName' --network production --force
+```
+
+The flags of interest for allow are:
+
+```
+--percent <value>       Acceptable values are -1 (= All to Waiting Room), 0 <= 100 (100 = everyone allowed)
+--policy <policyName>   Specified Visitor Prioritization Cloudlet policy name
+--rule <ruleName>       Name of rule in policy that should be changed. Use single quotes ('') in case rule name has spaces. If multiple rules exist for the same name, all of them will be updated.
+--network <network>     Either staging or production ; will make change based on latest version on that network
+--allrules              Apply this change to all rules in the policy without needing specific --rule name
+--force                 Use this flag if you want to proceed without confirmation (only for --network production)
+```
+
+### disable
+Disable or make inactive for a specific rule name in the policy.
+
+```bash
+%  akamai-visitor-prioritization disable --policy samplePolicyName --rule 'ruleName' --network production
+%  akamai-visitor-prioritization disable --policy samplePolicyName --rule 'ruleName' --network staging
+%  akamai-visitor-prioritization disable --policy samplePolicyName --allrules --network production --force
 ```
 
 The flags of interest for throttle are:
 
 ```
---percent <value>       Acceptable values are -1 (= All to Waiting Room), 0 <= 100 (100 = everyone allowed)
---disable               If specifed instead of --percent, disables the rule in the policy
 --policy <policyName>   Specified Visitor Prioritization Cloudlet policy name
 --rule <ruleName>       Name of rule in policy that should be changed. Use single quotes ('') in case rule name has spaces. If multiple rules exist for the same name, all of them will be updated.
 --network <network>     Either staging or production ; will make change based on latest version on that network
+--allrules              Apply this change to all rules in the policy without needing specific --rule name
 --force                 Use this flag if you want to proceed without confirmation (only for --network production)
 ```
 
