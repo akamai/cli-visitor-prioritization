@@ -21,7 +21,7 @@ client_token = [CLIENT_TOKEN_HERE]
 The initial version of the cloudlet-visitor-prioritization provides the following functionality:
 * One-time setup/download of local policy ids necessary to invoke APIs quickly
 * List current policy details, previous versions, and rules
-* Throttle (make percentage updates) rule for the specified policy and invoke change immediately
+* Update/Allow traffic to (make percentage updates) rule for the specified policy and invoke change immediately
 * Download the specified policy rules file in .json format to edit if necessary
 * Create a new policy version based on a raw json file
 * Activate a specific policy version
