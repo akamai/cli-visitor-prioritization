@@ -733,16 +733,26 @@ def allow(args):
                 return 1
 
     if not force and network == "production":
-        root_logger.info(
-            'You are about to allow traffic for ' +
-            rule +
-            ' at value = ' +
-            str(percent) +
-            ' for ' +
-            policy +
-            ' on the Akamai ' +
-            network +
-            ' network. Do you wish to continue? [y/N]')
+        if command == 'disable':
+            root_logger.info(
+                'You are about to ' + command + ' traffic for ' +
+                rule +
+                ' for ' +
+                policy +
+                ' on the Akamai ' +
+                network +
+                ' network. Do you wish to continue? [y/N]')
+        else:
+            root_logger.info(
+                'You are about to ' + command + ' traffic for ' +
+                rule +
+                ' at value = ' +
+                str(percent) +
+                ' for ' +
+                policy +
+                ' on the Akamai ' +
+                network +
+                ' network. Do you wish to continue? [y/N]')
 
 
         if str.lower(input()) != 'y':
