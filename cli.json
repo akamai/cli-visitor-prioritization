@@ -1,4 +1,5 @@
 {
+  "name": "akamai/visitor-prioritization",
   "requirements": {
     "python": "3.0.0"
   },
