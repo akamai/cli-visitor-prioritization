@@ -1,2 +1,2 @@
-edgegrid-python==1.0.10
+edgegrid-python==1.1.1
 requests==2.14.2
