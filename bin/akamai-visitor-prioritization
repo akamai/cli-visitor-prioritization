@@ -733,25 +733,28 @@ def allow(args):
                 return 1
 
     if not force and network == "production":
+        ruleStr = rule
+        if args.allrules:
+            ruleStr = "All Rules"        
         if command == 'disable':
             root_logger.info(
                 'You are about to ' + command + ' traffic for ' +
-                rule +
+                str(ruleStr) +
                 ' for ' +
-                policy +
+                str(policy) +
                 ' on the Akamai ' +
-                network +
+                str(network) +
                 ' network. Do you wish to continue? [y/N]')
         else:
             root_logger.info(
                 'You are about to ' + command + ' traffic for ' +
-                rule +
+                str(ruleStr) +
                 ' at value = ' +
                 str(percent) +
                 ' for ' +
-                policy +
+                str(policy) +
                 ' on the Akamai ' +
-                network +
+                str(network) +
                 ' network. Do you wish to continue? [y/N]')
 
 
