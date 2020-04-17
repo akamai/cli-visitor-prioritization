@@ -264,6 +264,11 @@ def create_sub_command(
         help="DEBUG mode to generate additional logs for troubleshooting",
         action="store_true")
 
+    optional.add_argument(
+        "--account-key",
+        help="Account Switch Key",
+        default="")
+
     return action
 
 
@@ -272,7 +277,7 @@ def setup(args):
 
     root_logger.info('Setting up required files... please wait')
     # Create the wrapper object to make calls
-    cloudlet_object = Cloudlet(base_url)
+    cloudlet_object = Cloudlet(base_url, args.account_key)
     group_response = cloudlet_object.list_cloudlet_groups(session)
     root_logger.info('Processing groups...')
     if group_response.status_code == 200:
@@ -350,7 +355,7 @@ def show(args):
     verbose = args.verbose
     from_version = args.from_version
 
-    cloudlet_object = Cloudlet(base_url)
+    cloudlet_object = Cloudlet(base_url, args.account_key)
     policies_folder = os.path.join(get_cache_dir(), 'policies')
     for root, dirs, files in os.walk(policies_folder):
         local_policy_file = policy + '.json'
@@ -505,7 +510,7 @@ def download(args):
     version = args.version
     output_file = args.output_file
 
-    cloudlet_object = Cloudlet(base_url)
+    cloudlet_object = Cloudlet(base_url, args.account_key)
     policies_folder = os.path.join(get_cache_dir(), 'policies')
     for root, dirs, files in os.walk(policies_folder):
         local_policy_file = policy + '.json'
@@ -580,7 +585,7 @@ def create_version(args):
     policy = args.policy
     file = args.file
 
-    cloudlet_object = Cloudlet(base_url)
+    cloudlet_object = Cloudlet(base_url, args.account_key)
     policies_folder = os.path.join(get_cache_dir(), 'policies')
     for root, dirs, files in os.walk(policies_folder):
         local_policy_file = policy + '.json'
@@ -657,7 +662,7 @@ def activate(args):
     if network == 'production':
         network = 'prod'
 
-    cloudlet_object = Cloudlet(base_url)
+    cloudlet_object = Cloudlet(base_url, args.account_key)
     policies_folder = os.path.join(get_cache_dir(), 'policies')
     for root, dirs, files in os.walk(policies_folder):
         local_policy_file = policy + '.json'
@@ -735,7 +740,7 @@ def allow(args):
     if not force and network == "production":
         ruleStr = rule
         if args.allrules:
-            ruleStr = "All Rules"        
+            ruleStr = "All Rules"
         if command == 'disable':
             root_logger.info(
                 'You are about to ' + command + ' traffic for ' +
@@ -765,7 +770,7 @@ def allow(args):
     if network == 'production':
         network = 'prod'
 
-    cloudlet_object = Cloudlet(base_url)
+    cloudlet_object = Cloudlet(base_url, args.account_key)
     policies_folder = os.path.join(get_cache_dir(), 'policies')
     for root, dirs, files in os.walk(policies_folder):
         local_policy_file = policy + '.json'

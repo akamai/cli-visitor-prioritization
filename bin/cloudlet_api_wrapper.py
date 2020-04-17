@@ -16,8 +16,12 @@ import json
 
 
 class Cloudlet(object):
-    def __init__(self, access_hostname):
+    def __init__(self, access_hostname, account_switch_key):
         self.access_hostname = access_hostname
+        if account_switch_key != '':
+            self.account_switch_key = '&accountSwitchKey=' + account_switch_key
+        else:
+            self.account_switch_key = ''
 
     def list_cloudlet_groups(self, session):
         """
@@ -34,7 +38,7 @@ class Cloudlet(object):
             (cloudlet_group_response) Object with all details
         """
         cloudlet_group_url = 'https://' + self.access_hostname + '/cloudlets/api/v2/group-info'
-        cloudlet_group_response = session.get(cloudlet_group_url)
+        cloudlet_group_response = session.get(self.form_url(cloudlet_group_url))
         return cloudlet_group_response
 
     def get_all_group_ids(self, session):
@@ -52,7 +56,7 @@ class Cloudlet(object):
             group_id_list with list of all groupIds
         """
         cloudlet_group_url = 'https://' + self.access_hostname + '/cloudlets/api/v2/group-info'
-        cloudlet_group_response = session.get(cloudlet_group_url)
+        cloudlet_group_response = session.get(self.form_url(cloudlet_group_url))
         group_id_list = []
         if cloudlet_group_response.status_code == 200:
             for everyItem in cloudlet_group_response.json():
@@ -79,7 +83,7 @@ class Cloudlet(object):
             list_all_cloudlets_url = 'https://' + self.access_hostname + \
                                      '/cloudlets/api/v2/cloudlet-info?gid=' + str(every_group_id)
             print('Fetching cloudlet for Group: ' + str(every_group_id))
-            list_all_cloudlets_response = session.get(list_all_cloudlets_url)
+            list_all_cloudlets_response = session.get(self.form_url(list_all_cloudlets_url))
             if list_all_cloudlets_response.status_code == 200:
                 cloudlet_list.append(list_all_cloudlets_response.json())
                 print(json.dumps(list_all_cloudlets_response.json()))
@@ -117,11 +121,11 @@ class Cloudlet(object):
         if cloudlet_code == 'optional':
             policies_url = 'https://' + self.access_hostname + \
                            '/cloudlets/api/v2/policies?gid=' + str(group_id) + '&cloudletId=' + str(cloudlet_id)
-            policies_response = session.get(policies_url)
+            policies_response = session.get(self.form_url(policies_url))
         elif cloudlet_code == 'VP':
             policies_url = 'https://' + self.access_hostname + \
                            '/cloudlets/api/v2/policies?gid=' + str(group_id) + '&cloudletId=' + str(1)
-            policies_response = session.get(policies_url)
+            policies_response = session.get(self.form_url(policies_url))
         return policies_response
 
     def get_cloudlet_policy(self, session, policy_id, version='optional'):
@@ -144,7 +148,7 @@ class Cloudlet(object):
         else:
             cloudlet_policy_url = 'https://' + self.access_hostname + '/cloudlets/api/v2/policies/' + \
                                   str(policy_id) + '/versions/' + str(version) + '?omitRules=false'
-        cloudlet_policy_response = session.get(cloudlet_policy_url)
+        cloudlet_policy_response = session.get(self.form_url(cloudlet_policy_url))
         return cloudlet_policy_response
 
     def list_policy_versions(self, session, policy_id, page_size='optional'):
@@ -168,8 +172,7 @@ class Cloudlet(object):
         else:
             cloudlet_policy_versions_url = 'https://' + self.access_hostname + '/cloudlets/api/v2/policies/' + \
                                            str(policy_id) + '/versions?includeRules=true&pageSize=' + page_size
-        cloudlet_policy_versions_response = session.get(
-            cloudlet_policy_versions_url)
+        cloudlet_policy_versions_response = session.get(self.form_url(cloudlet_policy_versions_url))
         return cloudlet_policy_versions_response
 
     def create_policy_version(
@@ -199,8 +202,7 @@ class Cloudlet(object):
         else:
             cloudlet_policy_create_url = 'https://' + self.access_hostname + '/cloudlets/api/v2/policies/' + \
                 str(policy_id) + '/versions' + '?includeRules=true&cloneVersion=' + clone_version
-        cloudlet_policy_create_response = session.post(
-            cloudlet_policy_create_url, headers=headers)
+        cloudlet_policy_create_response = session.post(self.form_url(cloudlet_policy_create_url), headers=headers)
         return cloudlet_policy_create_response
 
     def update_policy_version(
@@ -227,8 +229,7 @@ class Cloudlet(object):
         }
         cloudlet_policy_update_url = 'https://' + self.access_hostname + '/cloudlets/api/v2/policies/' + \
                                      str(policy_id) + '/versions/' + str(version) + '?omitRules=false'
-        cloudlet_policy_update_response = session.put(
-            cloudlet_policy_update_url, data=policy_details, headers=headers)
+        cloudlet_policy_update_response = session.put(self.form_url(cloudlet_policy_update_url), data=policy_details, headers=headers)
         return cloudlet_policy_update_response
 
     def activate_policy_version(
@@ -258,8 +259,7 @@ class Cloudlet(object):
         }""" % network
         cloudlet_policy_activate_url = 'https://' + self.access_hostname + \
             '/cloudlets/api/v2/policies/' + str(policy_id) + '/versions/' + str(version) + '/activations'
-        cloudlet_policy_activate_response = session.post(
-            cloudlet_policy_activate_url, data=network_data, headers=headers)
+        cloudlet_policy_activate_response = session.post(self.form_url(cloudlet_policy_activate_url), data=network_data, headers=headers)
         return cloudlet_policy_activate_response
 
     def delete_policy_version(self, session, policy_id, version):
@@ -279,6 +279,15 @@ class Cloudlet(object):
 
         cloudlet_policy_delete_url = 'https://' + self.access_hostname + \
                                      '/cloudlets/api/v2/policies/' + str(policy_id) + '/versions/' + str(version)
-        cloudlet_policy_delete_response = session.delete(
-            cloudlet_policy_delete_url)
+        cloudlet_policy_delete_response = session.delete(self.form_url(cloudlet_policy_delete_url))
         return cloudlet_policy_delete_response
+
+    def form_url(self, url):
+        #This is to ensure accountSwitchKey works for internal users
+        if '?' in url:
+            url = url + self.account_switch_key
+        else:
+            #Replace & with ? if there is no query string in URL
+            account_switch_key = self.account_switch_key.translate(self.account_switch_key.maketrans('&','?'))
+            url = url + account_switch_key
+        return url
