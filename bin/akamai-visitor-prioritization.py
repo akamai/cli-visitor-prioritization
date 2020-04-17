@@ -317,21 +317,24 @@ def setup(args):
                 session=session, group_id=group_id, cloudlet_code='VP')
             if cloudlet_policies.status_code == 200:
                 for every_policy in cloudlet_policies.json():
-                    policy_name = every_policy['name'] + '.json'
-                    root_logger.debug('Generating policy file: ' + policy_name)
-                    policy_details = {'name': every_policy['name'], 'description': every_policy['description'],
-                                      'policyId': every_policy['policyId'], 'groupId': every_policy['groupId']}
-                    if every_policy['name'] not in policies_list:
-                        policies_list.append(every_policy['name'])
-                        with open(os.path.join(policy_path, policy_name), 'w') as policy_file_handler:
-                            policy_file_handler.write(
-                                json.dumps(policy_details, indent=4))
-                    else:
-                        # This policy is already processed so move on
-                        root_logger.debug(
-                            'Duplicate policy in another group again ' +
-                            every_policy['name'])
-                        pass
+                    #Bug in Cloudlets API. Even though pass with cloudletId = 1, returns other cloudlets with other types
+                    #So check again to make sure cloudletId = 1
+                    if every_policy["cloudletId"] == 1:
+                        policy_name = every_policy['name'] + '.json'
+                        root_logger.debug('Generating policy file: ' + policy_name)
+                        policy_details = {'name': every_policy['name'], 'description': every_policy['description'],
+                                        'policyId': every_policy['policyId'], 'groupId': every_policy['groupId']}
+                        if every_policy['name'] not in policies_list:
+                            policies_list.append(every_policy['name'])
+                            with open(os.path.join(policy_path, policy_name), 'w') as policy_file_handler:
+                                policy_file_handler.write(
+                                    json.dumps(policy_details, indent=4))
+                        else:
+                            # This policy is already processed so move on
+                            root_logger.debug(
+                                'Duplicate policy in another group again ' +
+                                every_policy['name'])
+                            pass
             else:
                 root_logger.debug('groupId: ' + str(group_id) + ' has no policy details')
         root_logger.info(
