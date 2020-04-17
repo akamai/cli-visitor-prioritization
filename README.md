@@ -56,7 +56,7 @@ Get specific details for a policy name. Available information include configurat
 
 ```bash
 %  akamai-visitor-prioritization show --policy samplePolicyName
-%  akamai-visitor-prioritization show --policy samplePolicyName --from-version 37
+%  akamai-visitor-prioritization show --policy samplePolicyName --num-versions 15
 %  akamai-visitor-prioritization show --policy samplePolicyName --version 66
 %  akamai-visitor-prioritization show --policy samplePolicyName --version 66 --verbose
 ```
@@ -66,7 +66,7 @@ The flags of interest for show are:
 ```
 --policy <policyName>        Specified Visitor Prioritization Cloudlet policy name
 --version <version>          Specific version number for that policy name (optional)
---from-version <fromVersion> If --version is not specified, list policy version details starting from --from-version value (optional)
+--num-versions <numversions> If --version is not specified, list how many policy version details to return  (optional)
 --verbose                    If --version is specified, add --verbose to get full rule details including url paths and match criteria (optional)
 
 ```

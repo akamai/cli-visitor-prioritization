@@ -131,9 +131,9 @@ def cli():
          {"name": "verbose",
           "help": "Display detailed rule information for a specific version",
           "action": "store_true"},
-         {"name": "from-version",
+         {"name": "num-versions",
           "help":
-              "Display policy versions starting from the version number specified"}],
+              "Display last number of policy versions"}],
         [{"name": "policy", "help": "Policy name"}])
 
     actions["download"] = create_sub_command(
@@ -356,7 +356,7 @@ def show(args):
     policy = args.policy
     version = args.version
     verbose = args.verbose
-    from_version = args.from_version
+    num_versions = args.num_versions
 
     cloudlet_object = Cloudlet(base_url, args.account_key)
     policies_folder = os.path.join(get_cache_dir(), 'policies')
@@ -472,26 +472,19 @@ def show(args):
                                          ' v' +
                                          str(every_activation_detail['propertyInfo']['version']))
 
-                if not from_version:
+                if not num_versions:
                     policy_versions = cloudlet_object.list_policy_versions(
                         session, policy_policy_id, page_size='10')
                     root_logger.info(
-                        '\nFetching last 10 policy version details... You can pass --from-version to list more versions.')
+                        '\nFetching last 10 policy version details... You can pass --num-versions to list more versions.')
                 else:
                     policy_versions = cloudlet_object.list_policy_versions(
-                        session, policy_policy_id)
-                    root_logger.info(
-                        '\nShowing policy version details from version ' +
-                        str(from_version))
+                        session, policy_policy_id, num_versions)
+                    root_logger.info('\nFetching last ' + str(num_versions) + ' policy version details...')
+
                 root_logger.info('\nVersion Details (Version : Description)')
                 root_logger.info('------------------------------------------')
                 for every_version in policy_versions.json():
-                    if from_version:
-                        if int(every_version['version']) >= int(from_version):
-                            root_logger.info(
-                                str(every_version['version']) + ' : ' +
-                                str(every_version['description']))
-                    else:
                         root_logger.info(
                             str(every_version['version']) + ' : ' +
                             str(every_version['description']))
