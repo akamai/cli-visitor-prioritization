@@ -30,7 +30,7 @@ In case you need quick explanation contact the initiators.
 Initiators: vbhat@akamai.com and aetsai@akamai.com
 """
 
-PACKAGE_VERSION = "0.1.0"
+PACKAGE_VERSION = "0.3.0"
 
 # Setup logging
 if not os.path.exists('logs'):
@@ -131,9 +131,9 @@ def cli():
          {"name": "verbose",
           "help": "Display detailed rule information for a specific version",
           "action": "store_true"},
-         {"name": "from-version",
+         {"name": "num-versions",
           "help":
-              "Display policy versions starting from the version number specified"}],
+              "Display last number of policy versions"}],
         [{"name": "policy", "help": "Policy name"}])
 
     actions["download"] = create_sub_command(
@@ -264,6 +264,11 @@ def create_sub_command(
         help="DEBUG mode to generate additional logs for troubleshooting",
         action="store_true")
 
+    optional.add_argument(
+        "--account-key",
+        help="Account Switch Key",
+        default="")
+
     return action
 
 
@@ -272,7 +277,7 @@ def setup(args):
 
     root_logger.info('Setting up required files... please wait')
     # Create the wrapper object to make calls
-    cloudlet_object = Cloudlet(base_url)
+    cloudlet_object = Cloudlet(base_url, args.account_key)
     group_response = cloudlet_object.list_cloudlet_groups(session)
     root_logger.info('Processing groups...')
     if group_response.status_code == 200:
@@ -312,21 +317,24 @@ def setup(args):
                 session=session, group_id=group_id, cloudlet_code='VP')
             if cloudlet_policies.status_code == 200:
                 for every_policy in cloudlet_policies.json():
-                    policy_name = every_policy['name'] + '.json'
-                    root_logger.debug('Generating policy file: ' + policy_name)
-                    policy_details = {'name': every_policy['name'], 'description': every_policy['description'],
-                                      'policyId': every_policy['policyId'], 'groupId': every_policy['groupId']}
-                    if every_policy['name'] not in policies_list:
-                        policies_list.append(every_policy['name'])
-                        with open(os.path.join(policy_path, policy_name), 'w') as policy_file_handler:
-                            policy_file_handler.write(
-                                json.dumps(policy_details, indent=4))
-                    else:
-                        # This policy is already processed so move on
-                        root_logger.debug(
-                            'Duplicate policy in another group again ' +
-                            every_policy['name'])
-                        pass
+                    #Bug in Cloudlets API. Even though pass with cloudletId = 1, returns other cloudlets with other types
+                    #So check again to make sure cloudletId = 1
+                    if every_policy["cloudletId"] == 1:
+                        policy_name = every_policy['name'] + '.json'
+                        root_logger.debug('Generating policy file: ' + policy_name)
+                        policy_details = {'name': every_policy['name'], 'description': every_policy['description'],
+                                        'policyId': every_policy['policyId'], 'groupId': every_policy['groupId']}
+                        if every_policy['name'] not in policies_list:
+                            policies_list.append(every_policy['name'])
+                            with open(os.path.join(policy_path, policy_name), 'w') as policy_file_handler:
+                                policy_file_handler.write(
+                                    json.dumps(policy_details, indent=4))
+                        else:
+                            # This policy is already processed so move on
+                            root_logger.debug(
+                                'Duplicate policy in another group again ' +
+                                every_policy['name'])
+                            pass
             else:
                 root_logger.debug('groupId: ' + str(group_id) + ' has no policy details')
         root_logger.info(
@@ -348,9 +356,9 @@ def show(args):
     policy = args.policy
     version = args.version
     verbose = args.verbose
-    from_version = args.from_version
+    num_versions = args.num_versions
 
-    cloudlet_object = Cloudlet(base_url)
+    cloudlet_object = Cloudlet(base_url, args.account_key)
     policies_folder = os.path.join(get_cache_dir(), 'policies')
     for root, dirs, files in os.walk(policies_folder):
         local_policy_file = policy + '.json'
@@ -464,26 +472,19 @@ def show(args):
                                          ' v' +
                                          str(every_activation_detail['propertyInfo']['version']))
 
-                if not from_version:
+                if not num_versions:
                     policy_versions = cloudlet_object.list_policy_versions(
                         session, policy_policy_id, page_size='10')
                     root_logger.info(
-                        '\nFetching last 10 policy version details... You can pass --from-version to list more versions.')
+                        '\nFetching last 10 policy version details... You can pass --num-versions to list more versions.')
                 else:
                     policy_versions = cloudlet_object.list_policy_versions(
-                        session, policy_policy_id)
-                    root_logger.info(
-                        '\nShowing policy version details from version ' +
-                        str(from_version))
+                        session, policy_policy_id, num_versions)
+                    root_logger.info('\nFetching last ' + str(num_versions) + ' policy version details...')
+
                 root_logger.info('\nVersion Details (Version : Description)')
                 root_logger.info('------------------------------------------')
                 for every_version in policy_versions.json():
-                    if from_version:
-                        if int(every_version['version']) >= int(from_version):
-                            root_logger.info(
-                                str(every_version['version']) + ' : ' +
-                                str(every_version['description']))
-                    else:
                         root_logger.info(
                             str(every_version['version']) + ' : ' +
                             str(every_version['description']))
@@ -505,7 +506,7 @@ def download(args):
     version = args.version
     output_file = args.output_file
 
-    cloudlet_object = Cloudlet(base_url)
+    cloudlet_object = Cloudlet(base_url, args.account_key)
     policies_folder = os.path.join(get_cache_dir(), 'policies')
     for root, dirs, files in os.walk(policies_folder):
         local_policy_file = policy + '.json'
@@ -580,7 +581,7 @@ def create_version(args):
     policy = args.policy
     file = args.file
 
-    cloudlet_object = Cloudlet(base_url)
+    cloudlet_object = Cloudlet(base_url, args.account_key)
     policies_folder = os.path.join(get_cache_dir(), 'policies')
     for root, dirs, files in os.walk(policies_folder):
         local_policy_file = policy + '.json'
@@ -657,7 +658,7 @@ def activate(args):
     if network == 'production':
         network = 'prod'
 
-    cloudlet_object = Cloudlet(base_url)
+    cloudlet_object = Cloudlet(base_url, args.account_key)
     policies_folder = os.path.join(get_cache_dir(), 'policies')
     for root, dirs, files in os.walk(policies_folder):
         local_policy_file = policy + '.json'
@@ -735,7 +736,7 @@ def allow(args):
     if not force and network == "production":
         ruleStr = rule
         if args.allrules:
-            ruleStr = "All Rules"        
+            ruleStr = "All Rules"
         if command == 'disable':
             root_logger.info(
                 'You are about to ' + command + ' traffic for ' +
@@ -765,7 +766,7 @@ def allow(args):
     if network == 'production':
         network = 'prod'
 
-    cloudlet_object = Cloudlet(base_url)
+    cloudlet_object = Cloudlet(base_url, args.account_key)
     policies_folder = os.path.join(get_cache_dir(), 'policies')
     for root, dirs, files in os.walk(policies_folder):
         local_policy_file = policy + '.json'
